@@ -664,7 +664,10 @@ namespace UbplCommon.Processor
         /// </summary>
         void Lat(ModRm modrm, uint head, uint tail)
         {
+            uint tmp = tail;
+            (head, tail) = GetValue(modrm, head, tail);
 
+            this.temporary = (ulong)head * tail;
         }
 
         /// <summary>
@@ -672,7 +675,10 @@ namespace UbplCommon.Processor
         /// </summary>
         void Latsna(ModRm modrm, uint head, uint tail)
         {
+            uint tmp = tail;
+            (head, tail) = GetValue(modrm, head, tail);
 
+            this.temporary = (ulong)((long)head * tail);
         }
 
         /// <summary>
@@ -680,7 +686,8 @@ namespace UbplCommon.Processor
         /// </summary>
         void Latkrz(ModRm modrm, uint head, uint tail)
         {
-
+            SetValue(modrm.ModeTail, modrm.RegTail, tail, (uint)(this.temporary >> 32));
+            SetValue(modrm.ModeHead, modrm.RegHead, head, (uint)(this.temporary));
         }
 
         /// <summary>
