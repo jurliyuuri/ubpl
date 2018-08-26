@@ -37,8 +37,13 @@ namespace UbplCommon.Translator
 
         internal bool IsLabel
         {
-            get => !Reg.HasValue && !SecondReg.HasValue
-                && !Disp.HasValue && !string.IsNullOrEmpty(Label);
+            get => !string.IsNullOrEmpty(Label);
+        }
+
+        internal bool IsRegAndImm
+        {
+            get => Reg.HasValue && !SecondReg.HasValue
+                && Disp.HasValue && string.IsNullOrEmpty(Label);
         }
 
         internal bool HasSecondReg
@@ -51,7 +56,7 @@ namespace UbplCommon.Translator
         internal Operand(Register reg, bool address = false) : this(reg, null, null, null, address) { }
         internal Operand(Register reg, uint val, bool address = false) : this(reg, null, val, null, address) { }
         internal Operand(Register reg, Register second, bool address = false) : this(reg, second, null, null, address) { }
-        internal Operand(string label, bool address = true, uint val = 0) : this(null, null, val, label, address) { }
+        internal Operand(string label, bool address, uint val = 0) : this(null, null, val, label, address) { }
 
         internal Operand ToAddressing()
         {
@@ -107,7 +112,11 @@ namespace UbplCommon.Translator
         {
             StringBuilder buffer = new StringBuilder();
 
-            if (Reg.HasValue)
+            if (IsLabel)
+            {
+                buffer.Append(Label);
+            }
+            else if (Reg.HasValue)
             {
                 buffer.Append(Reg.Value);
 
@@ -119,10 +128,6 @@ namespace UbplCommon.Translator
                 {
                     buffer.Append("+").Append(Disp);
                 }
-            }
-            else if (IsLabel)
-            {
-                buffer.Append(Label);
             }
             else if (Disp.HasValue)
             {

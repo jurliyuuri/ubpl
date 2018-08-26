@@ -13,10 +13,11 @@ namespace UbplCommon
         REG32_REG32 = 2,
         REG32_IMM32 = 3,
 
-        ADDRESS = 4,
         ADDR_REG32 = ADDRESS | REG32,
         ADDR_IMM32 = ADDRESS | IMM32,
         ADDR_REG32_REG32 = ADDRESS | REG32_REG32,
         ADDR_REG32_IMM32 = ADDRESS | REG32_IMM32,
+
+        ADDRESS = 4,
     }
 }

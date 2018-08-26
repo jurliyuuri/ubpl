@@ -4,15 +4,16 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{6B4837F8-17F4-4980-A277-3AF65B3D45ED}</ProjectGuid>
-    <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>UbplCommon</RootNamespace>
-    <AssemblyName>UbplCommon</AssemblyName>
+    <ProjectGuid>{30CAD368-B737-49A2-BE51-3CCF96434C25}</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Ubplla</RootNamespace>
+    <AssemblyName>ubplla</AssemblyName>
     <TargetFrameworkVersion>v4.7</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -22,6 +23,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
@@ -40,20 +42,19 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Mnemonic.cs" />
-    <Compile Include="UbplMnemonic.cs" />
-    <Compile Include="ModRm.cs" />
-    <Compile Include="OperandMode.cs" />
-    <Compile Include="OperandType.cs" />
-    <Compile Include="Processor\Emulator.cs" />
-    <Compile Include="Processor\Memory.cs" />
+    <Compile Include="Core\LkAssembler.cs" />
+    <Compile Include="Core\LkCode.cs" />
+    <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Register.cs" />
-    <Compile Include="Translator\Code.cs" />
-    <Compile Include="Translator\CodeGenerator.cs" />
-    <Compile Include="Translator\FiType.cs" />
-    <Compile Include="Translator\Operand.cs" />
-    <Compile Include="UbplConstant.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\UbplCommon\UbplCommon.csproj">
+      <Project>{6b4837f8-17f4-4980-a277-3af65b3d45ed}</Project>
+      <Name>UbplCommon</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

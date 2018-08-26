@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UbplCommon", "UbplCommon\Ub
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ubpl", "Ubpl\Ubpl.csproj", "{F5A844F4-E585-4CBA-B8E3-1C5C2BC52604}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ubplla", "Ubplla\Ubplla.csproj", "{30CAD368-B737-49A2-BE51-3CCF96434C25}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{F5A844F4-E585-4CBA-B8E3-1C5C2BC52604}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F5A844F4-E585-4CBA-B8E3-1C5C2BC52604}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F5A844F4-E585-4CBA-B8E3-1C5C2BC52604}.Release|Any CPU.Build.0 = Release|Any CPU
+		{30CAD368-B737-49A2-BE51-3CCF96434C25}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{30CAD368-B737-49A2-BE51-3CCF96434C25}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{30CAD368-B737-49A2-BE51-3CCF96434C25}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{30CAD368-B737-49A2-BE51-3CCF96434C25}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

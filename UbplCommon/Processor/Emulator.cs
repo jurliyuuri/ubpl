@@ -160,6 +160,7 @@ namespace UbplCommon.Processor
 
                 uint code = this.memory[this.registers[Register.XX]];
                 //Console.WriteLine("nx = {0:X08}, code = {1:X08}", this.registers[Register.XX], code);
+                
                 this.registers[Register.XX] += 4;
 
                 ModRm modrm = new ModRm(this.memory[this.registers[Register.XX]]);
@@ -305,28 +306,28 @@ namespace UbplCommon.Processor
                 switch (mode)
                 {
                     case OperandMode.REG32:
-                        result = this.registers[modrm.RegHead];
+                        result = this.registers[register];
                         break;
                     case OperandMode.IMM32:
-                        result = first;
+                        result = value;
                         break;
                     case OperandMode.REG32_REG32:
-                        result = this.registers[modrm.RegHead] + this.registers[(Register)first];
+                        result = this.registers[register] + this.registers[(Register)value];
                         break;
                     case OperandMode.REG32_IMM32:
-                        result = this.registers[modrm.RegHead] + first;
+                        result = this.registers[register] + value;
                         break;
                     case OperandMode.ADDR_REG32:
-                        result = this.memory[this.registers[modrm.RegHead]];
+                        result = this.memory[this.registers[register]];
                         break;
                     case OperandMode.ADDR_IMM32:
-                        result = this.memory[first];
+                        result = this.memory[value];
                         break;
                     case OperandMode.ADDR_REG32_REG32:
-                        result = this.memory[this.registers[modrm.RegHead] + this.registers[(Register)first]];
+                        result = this.memory[this.registers[register] + this.registers[(Register)value]];
                         break;
                     case OperandMode.ADDR_REG32_IMM32:
-                        result = this.memory[this.registers[modrm.RegHead] + first];
+                        result = this.memory[this.registers[register] + value];
                         break;
                     default:
                         break;
@@ -378,7 +379,7 @@ namespace UbplCommon.Processor
             uint tmp = tail;
             (head, tail) = GetValue(modrm, head, tail);
 
-            SetValue(modrm.ModeTail, modrm.RegTail, tmp, head + tail);
+            SetValue(modrm.ModeTail, modrm.RegTail, tmp, tail + head);
         }
 
         /// <summary>
@@ -389,7 +390,7 @@ namespace UbplCommon.Processor
             uint tmp = tail;
             (head, tail) = GetValue(modrm, head, tail);
 
-            SetValue(modrm.ModeTail, modrm.RegTail, tmp, head - tail);
+            SetValue(modrm.ModeTail, modrm.RegTail, tmp, tail - head);
         }
 
         /// <summary>
@@ -400,7 +401,7 @@ namespace UbplCommon.Processor
             uint tmp = tail;
             (head, tail) = GetValue(modrm, head, tail);
 
-            SetValue(modrm.ModeTail, modrm.RegTail, tmp, head & tail);
+            SetValue(modrm.ModeTail, modrm.RegTail, tmp, tail & head);
         }
 
         /// <summary>
@@ -411,7 +412,7 @@ namespace UbplCommon.Processor
             uint tmp = tail;
             (head, tail) = GetValue(modrm, head, tail);
 
-            SetValue(modrm.ModeTail, modrm.RegTail, tmp, head | tail);
+            SetValue(modrm.ModeTail, modrm.RegTail, tmp, tail | head);
         }
 
         /// <summary>
@@ -423,14 +424,14 @@ namespace UbplCommon.Processor
             (head, tail) = GetValue(modrm, head, tail);
 
             uint value;
-            int iTail = (int)tail;
-            if(iTail >= 32)
+            int iHead = (int)head;
+            if(iHead >= 32)
             {
                 value = 0;
             }
             else
             {
-                value = head >> iTail;
+                value = tail >> iHead;
             }
 
             SetValue(modrm.ModeTail, modrm.RegTail, tmp, value);
@@ -445,15 +446,15 @@ namespace UbplCommon.Processor
             (head, tail) = GetValue(modrm, head, tail);
 
             uint value;
-            int iTail = (int)tail;
+            int iHead = (int)head;
 
-            if (iTail >= 32)
+            if (iHead >= 32)
             {
                 value = 0;
             }
             else
             {
-                value = head << iTail;
+                value = tail << iHead;
             }
 
             SetValue(modrm.ModeTail, modrm.RegTail, tmp, value);
@@ -468,15 +469,15 @@ namespace UbplCommon.Processor
             (head, tail) = GetValue(modrm, head, tail);
 
             uint value;
-            int iTail = (int)tail;
+            int iHead = (int)head;
 
-            if (iTail >= 32)
+            if (iHead >= 32)
             {
-                value = (uint)((int)head >> 31);
+                value = (uint)((int)tail >> 31);
             }
             else
             {
-                value = (uint)((int)head >> iTail);
+                value = (uint)((int)tail >> iHead);
             }
 
             SetValue(modrm.ModeTail, modrm.RegTail, tmp, value);
@@ -490,7 +491,7 @@ namespace UbplCommon.Processor
             uint tmp = tail;
             (head, tail) = GetValue(modrm, head, tail);
 
-            SetValue(modrm.ModeTail, modrm.RegTail, tmp, ~(head ^ tail));
+            SetValue(modrm.ModeTail, modrm.RegTail, tmp, ~(tail ^ head));
         }
 
         /// <summary>
@@ -667,7 +668,7 @@ namespace UbplCommon.Processor
             uint tmp = tail;
             (head, tail) = GetValue(modrm, head, tail);
 
-            this.temporary = (ulong)head * tail;
+            this.temporary = (ulong)tail * head;
         }
 
         /// <summary>
@@ -678,7 +679,7 @@ namespace UbplCommon.Processor
             uint tmp = tail;
             (head, tail) = GetValue(modrm, head, tail);
 
-            this.temporary = (ulong)((long)head * tail);
+            this.temporary = (ulong)((long)tail * head);
         }
 
         /// <summary>

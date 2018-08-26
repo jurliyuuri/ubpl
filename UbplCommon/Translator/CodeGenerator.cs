@@ -16,19 +16,21 @@ namespace UbplCommon.Translator
         protected static readonly Operand F1 = new Operand(Register.F1);
         protected static readonly Operand F2 = new Operand(Register.F2);
         protected static readonly Operand F3 = new Operand(Register.F3);
+        protected static readonly Operand F4 = new Operand(Register.F4);
         protected static readonly Operand F5 = new Operand(Register.F5);
+        protected static readonly Operand F6 = new Operand(Register.F6);
         protected static readonly Operand XX = new Operand(Register.XX);
 
-        protected static readonly FiType XTLO = new FiType(Mnemonic.XTLO);
-        protected static readonly FiType XYLO = new FiType(Mnemonic.XYLO);
-        protected static readonly FiType CLO = new FiType(Mnemonic.CLO);
-        protected static readonly FiType XOLO = new FiType(Mnemonic.XOLO);
-        protected static readonly FiType LLO = new FiType(Mnemonic.LLO);
-        protected static readonly FiType NIV = new FiType(Mnemonic.NIV);
-        protected static readonly FiType XTLONYS = new FiType(Mnemonic.XTLONYS);
-        protected static readonly FiType XYLONYS = new FiType(Mnemonic.XYLONYS);
-        protected static readonly FiType XOLONYS = new FiType(Mnemonic.XOLONYS);
-        protected static readonly FiType LLONYS = new FiType(Mnemonic.LLONYS);
+        protected static readonly FiType XTLO = new FiType(UbplMnemonic.XTLO);
+        protected static readonly FiType XYLO = new FiType(UbplMnemonic.XYLO);
+        protected static readonly FiType CLO = new FiType(UbplMnemonic.CLO);
+        protected static readonly FiType XOLO = new FiType(UbplMnemonic.XOLO);
+        protected static readonly FiType LLO = new FiType(UbplMnemonic.LLO);
+        protected static readonly FiType NIV = new FiType(UbplMnemonic.NIV);
+        protected static readonly FiType XTLONYS = new FiType(UbplMnemonic.XTLONYS);
+        protected static readonly FiType XYLONYS = new FiType(UbplMnemonic.XYLONYS);
+        protected static readonly FiType XOLONYS = new FiType(UbplMnemonic.XOLONYS);
+        protected static readonly FiType LLONYS = new FiType(UbplMnemonic.LLONYS);
 
         protected CodeGenerator()
         {
@@ -46,9 +48,9 @@ namespace UbplCommon.Translator
             return new Operand(val);
         }
 
-        protected Operand ToOperand(string label)
+        protected Operand ToOperand(string label, bool address)
         {
-            return new Operand(label);
+            return new Operand(label, address);
         }
         
         /// <summary>
@@ -74,7 +76,7 @@ namespace UbplCommon.Translator
                     {
                         writer.Write(0U);
                     }
-                    else if (code.Head.IsImm)
+                    else if (code.Head.IsImm || code.Head.IsRegAndImm)
                     {
                         writer.Write(ToBinary(code.Head.Disp.Value));
                     }
@@ -91,7 +93,7 @@ namespace UbplCommon.Translator
                     {
                         writer.Write(0U);
                     }
-                    else if (code.Head.IsImm)
+                    else if (code.Tail.IsImm)
                     {
                         if(code.Tail.IsAddress)
                         {
@@ -102,12 +104,16 @@ namespace UbplCommon.Translator
                             throw new ArgumentException($"Invalid Operand: {code.Tail}");
                         }
                     }
+                    else if (code.Tail.IsRegAndImm)
+                    {
+                        writer.Write(ToBinary(code.Tail.Disp.Value));
+                    }
                     else if (code.Tail.HasSecondReg)
                     {
                         writer.Write(ToBinary((uint)code.Tail.SecondReg.Value));
                     }
 
-                    count += 4;
+                    count += 16;
                 }
             }
 
@@ -116,9 +122,9 @@ namespace UbplCommon.Translator
                 var buffer = new byte[4];
 
                 buffer[0] = (byte)(value >> 24);
-                buffer[1] = (byte)(value >> 24);
-                buffer[2] = (byte)(value >> 24);
-                buffer[3] = (byte)(value >> 24);
+                buffer[1] = (byte)(value >> 16);
+                buffer[2] = (byte)(value >> 8);
+                buffer[3] = (byte)value;
 
                 return buffer;
             }
@@ -126,7 +132,7 @@ namespace UbplCommon.Translator
 
         #region GeneratingMethod
 
-        private void Append(Mnemonic mne, Operand head, Operand tail)
+        private void Append(UbplMnemonic mne, Operand head, Operand tail)
         {
             ModRm modrm = CreateModRm(head, tail);
 
@@ -142,25 +148,29 @@ namespace UbplCommon.Translator
         private ModRm CreateModRm(Operand head, Operand tail)
         {
             ModRm modrm = new ModRm();
-            (modrm.ModeHead, modrm.TypeHead, modrm.RegHead) = GetValue(head);
-            (modrm.ModeTail, modrm.TypeTail, modrm.RegTail) = GetValue(tail);
+            (modrm.ModeHead, modrm.RegHead) = GetValue(head);
+            (modrm.ModeTail, modrm.RegTail) = GetValue(tail);
 
             return modrm;
 
-            (OperandMode, OperandType, Register) GetValue(Operand value) {
+            (OperandMode, Register) GetValue(Operand value) {
                 OperandMode mode = OperandMode.REG32;
-                OperandType type = OperandType.REG;
                 Register register = Register.F0;
 
-                if(value.IsLabel)
+                if (value.IsLabel)
                 {
                     mode = OperandMode.REG32_IMM32;
                     register = Register.XX;
                 }
-                else if(value.IsImm)
+                else if (value.IsImm)
                 {
                     mode = OperandMode.IMM32;
                     register = Register.F0;
+                }
+                else if (value.IsRegAndImm)
+                {
+                    mode = OperandMode.REG32_IMM32;
+                    register = value.Reg.Value;
                 }
                 else if (value.IsReg)
                 {
@@ -178,7 +188,7 @@ namespace UbplCommon.Translator
                     mode |= OperandMode.ADDRESS;
                 }
 
-                return (mode, type, register);
+                return (mode, register);
             }
         }
 
@@ -194,7 +204,7 @@ namespace UbplCommon.Translator
         {
             if(this.codeList.Any())
             {
-                this.labels.Add(name, (this.codeList.Count - 4) * 4);
+                this.labels.Add(name, (this.codeList.Count - 1) * 16);
             }
             else
             {
@@ -208,7 +218,7 @@ namespace UbplCommon.Translator
         /// <param name="name">ラベル名</param>
         protected void Nll(string name)
         {
-            this.labels.Add(name, this.codeList.Count * 4);
+            this.labels.Add(name, this.codeList.Count * 16);
         }
 
         /// <summary>
@@ -228,7 +238,7 @@ namespace UbplCommon.Translator
         /// <param name="opd2">オペランド</param>
         protected void Ata(Operand opd1, Operand opd2)
         {
-            Append(Mnemonic.ATA, opd1, opd2);
+            Append(UbplMnemonic.ATA, opd1, opd2);
         }
 
         /// <summary>
@@ -248,7 +258,7 @@ namespace UbplCommon.Translator
         /// <param name="opd2">オペランド</param>
         protected void Nta(Operand opd1, Operand opd2)
         {
-            Append(Mnemonic.NTA, opd1, opd2);
+            Append(UbplMnemonic.NTA, opd1, opd2);
         }
 
         /// <summary>
@@ -268,7 +278,7 @@ namespace UbplCommon.Translator
         /// <param name="opd2">オペランド</param>
         protected void Ada(Operand opd1, Operand opd2)
         {
-            Append(Mnemonic.ADA, opd1, opd2);
+            Append(UbplMnemonic.ADA, opd1, opd2);
         }
 
         /// <summary>
@@ -288,7 +298,7 @@ namespace UbplCommon.Translator
         /// <param name="opd2">オペランド</param>
         protected void Ekc(Operand opd1, Operand opd2)
         {
-            Append(Mnemonic.EKC, opd1, opd2);
+            Append(UbplMnemonic.EKC, opd1, opd2);
         }
 
         /// <summary>
@@ -308,7 +318,7 @@ namespace UbplCommon.Translator
         /// <param name="opd2">オペランド</param>
         protected void Dto(Operand opd1, Operand opd2)
         {
-            Append(Mnemonic.DTO, opd1, opd2);
+            Append(UbplMnemonic.DTO, opd1, opd2);
         }
 
         /// <summary>
@@ -328,7 +338,7 @@ namespace UbplCommon.Translator
         /// <param name="opd2">オペランド</param>
         protected void Dro(Operand opd1, Operand opd2)
         {
-            Append(Mnemonic.DRO, opd1, opd2);
+            Append(UbplMnemonic.DRO, opd1, opd2);
         }
 
         /// <summary>
@@ -348,7 +358,7 @@ namespace UbplCommon.Translator
         /// <param name="opd2">オペランド</param>
         protected void Dtosna(Operand opd1, Operand opd2)
         {
-            Append(Mnemonic.DTOSNA, opd1, opd2);
+            Append(UbplMnemonic.DTOSNA, opd1, opd2);
         }
 
         /// <summary>
@@ -368,7 +378,7 @@ namespace UbplCommon.Translator
         /// <param name="opd2">オペランド</param>
         protected void Dal(Operand opd1, Operand opd2)
         {
-            Append(Mnemonic.DAL, opd1, opd2);
+            Append(UbplMnemonic.DAL, opd1, opd2);
         }
 
         /// <summary>
@@ -377,7 +387,7 @@ namespace UbplCommon.Translator
         /// <param name="opd">オペランド</param>
         protected void Nac(Operand opd)
         {
-            Append(Mnemonic.DAL, new Operand(0), opd);
+            Append(UbplMnemonic.DAL, new Operand(0), opd);
         }
 
         /// <summary>
@@ -407,7 +417,7 @@ namespace UbplCommon.Translator
         /// <param name="opd2">オペランド</param>
         protected void Krz(Operand opd1, Operand opd2)
         {
-            Append(Mnemonic.KRZ, opd1, opd2);
+            Append(UbplMnemonic.KRZ, opd1, opd2);
         }
 
         /// <summary>
@@ -437,7 +447,7 @@ namespace UbplCommon.Translator
         /// <param name="opd2">オペランド</param>
         protected void Malkrz(Operand opd1, Operand opd2)
         {
-            Append(Mnemonic.MALKRZ, opd1, opd2);
+            Append(UbplMnemonic.MALKRZ, opd1, opd2);
         }
 
         /// <summary>
@@ -502,20 +512,20 @@ namespace UbplCommon.Translator
         {
             if(opd1.Equals(opd3))
             {
-                Append(Mnemonic.ACH, opd1, opd2);
+                Append(UbplMnemonic.ACH, opd1, opd2);
             }
             else if(opd3.IsReg && opd3.Reg == Register.XX)
             {
-                Append(Mnemonic.INJXX, opd1, opd2);
+                Append(UbplMnemonic.INJXX, opd1, opd2);
             }
             else if(opd2.IsReg && opd2.Reg == Register.XX)
             {
-                Append(Mnemonic.FNX, opd1, opd3);
+                Append(UbplMnemonic.FNX, opd1, opd3);
             }
             else
             {
-                Append(Mnemonic.KRZ, opd2, opd3);
-                Append(Mnemonic.KRZ, opd1, opd2);
+                Append(UbplMnemonic.KRZ, opd2, opd3);
+                Append(UbplMnemonic.KRZ, opd1, opd2);
             }
         }
 
@@ -538,8 +548,8 @@ namespace UbplCommon.Translator
         /// <param name="opd3">オペランド</param>
         protected void Lat(Operand opd1, Operand opd2, Operand opd3)
         {
-            Append(Mnemonic.LAT, opd1, opd2);
-            Append(Mnemonic.LATKRZ, opd2, opd3);
+            Append(UbplMnemonic.LAT, opd1, opd2);
+            Append(UbplMnemonic.LATKRZ, opd2, opd3);
         }
 
         /// <summary>
@@ -561,8 +571,8 @@ namespace UbplCommon.Translator
         /// <param name="opd3">オペランド</param>
         protected void Latsna(Operand opd1, Operand opd2, Operand opd3)
         {
-            Append(Mnemonic.LATSNA, opd1, opd2);
-            Append(Mnemonic.LATKRZ, opd2, opd3);
+            Append(UbplMnemonic.LATSNA, opd1, opd2);
+            Append(UbplMnemonic.LATKRZ, opd2, opd3);
         }
     }
 

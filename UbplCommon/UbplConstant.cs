@@ -14,12 +14,12 @@ namespace UbplCommon
         public static readonly int REGISTER_COUNT = 8;
 
         /// <summary>
-        /// 2003fのF5レジスタのデフォルト値
+        /// ubplのF5レジスタのデフォルト値
         /// </summary>
         public static readonly uint DEFAULT_INITIAL_F5 = 0x6D7AA0F8U;
 
         /// <summary>
-        /// 2003fのNXレジスタのデフォルト値
+        /// ubplのNXレジスタのデフォルト値
         /// </summary>
         public static readonly uint DEFAULT_INITIAL_NX = 0x14830000U;
 

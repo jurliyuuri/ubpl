@@ -55,7 +55,7 @@ namespace UbplCommon.Processor
 
                 if (!this.memory.ContainsKey(address))
                 {
-                    this.memory[address] = (uint)this.random.Next(0, int.MinValue);
+                    this.memory[address] = (uint)this.random.Next(int.MinValue, int.MaxValue);
                 }
 
                 return this.memory[address];
