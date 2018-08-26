@@ -65,6 +65,8 @@ namespace UbplCommon.Translator
 
                 foreach (var code in this.codeList)
                 {
+                    bool isFi = IsFiMode(code.Mnemonic);
+                    
                     writer.Write(ToBinary((uint)code.Mnemonic));
                     writer.Write(ToBinary(code.Modrm.Value));
 
@@ -85,32 +87,55 @@ namespace UbplCommon.Translator
                         writer.Write(ToBinary((uint)code.Head.SecondReg.Value));
                     }
 
-                    if (code.Tail.IsLabel)
+                    if(isFi)
                     {
-                        throw new ArgumentException($"Invalid Operand: {code.Tail}");
-                    }
-                    else if (code.Tail.IsReg)
-                    {
-                        writer.Write(0U);
-                    }
-                    else if (code.Tail.IsImm)
-                    {
-                        if(code.Tail.IsAddress)
+                        if (code.Tail.IsLabel)
+                        {
+                            writer.Write(ToBinary((uint)(this.labels[code.Tail.Label] - (count + 16))));
+                        }
+                        else if (code.Tail.IsReg)
+                        {
+                            writer.Write(0U);
+                        }
+                        else if (code.Tail.IsImm || code.Tail.IsRegAndImm)
                         {
                             writer.Write(ToBinary(code.Tail.Disp.Value));
                         }
-                        else
+                        else if (code.Tail.HasSecondReg)
                         {
-                            throw new ArgumentException($"Invalid Operand: {code.Tail}");
+                            writer.Write(ToBinary((uint)code.Tail.SecondReg.Value));
                         }
+
                     }
-                    else if (code.Tail.IsRegAndImm)
+                    else
                     {
-                        writer.Write(ToBinary(code.Tail.Disp.Value));
-                    }
-                    else if (code.Tail.HasSecondReg)
-                    {
-                        writer.Write(ToBinary((uint)code.Tail.SecondReg.Value));
+                        if (code.Tail.IsLabel)
+                        {
+                            throw new ArgumentException($"Invalid Operand: {code} count:{count}");
+                        }
+                        else if (code.Tail.IsReg)
+                        {
+                            writer.Write(0U);
+                        }
+                        else if (code.Tail.IsRegAndImm)
+                        {
+                            writer.Write(ToBinary(code.Tail.Disp.Value));
+                        }
+                        else if (code.Tail.IsImm)
+                        {
+                            if (code.Tail.IsAddress)
+                            {
+                                writer.Write(ToBinary(code.Tail.Disp.Value));
+                            }
+                            else
+                            {
+                                throw new ArgumentException($"Invalid Operand: {code} count:{count}");
+                            }
+                        }
+                        else if (code.Tail.HasSecondReg)
+                        {
+                            writer.Write(ToBinary((uint)code.Tail.SecondReg.Value));
+                        }
                     }
 
                     count += 16;
@@ -127,6 +152,20 @@ namespace UbplCommon.Translator
                 buffer[3] = (byte)value;
 
                 return buffer;
+            }
+
+            bool IsFiMode(UbplMnemonic mnemonic)
+            {
+                return mnemonic == UbplMnemonic.XTLO
+                    || mnemonic == UbplMnemonic.XYLO
+                    || mnemonic == UbplMnemonic.CLO
+                    || mnemonic == UbplMnemonic.XOLO
+                    || mnemonic == UbplMnemonic.LLO
+                    || mnemonic == UbplMnemonic.NIV
+                    || mnemonic == UbplMnemonic.XTLONYS
+                    || mnemonic == UbplMnemonic.XYLONYS
+                    || mnemonic == UbplMnemonic.XOLONYS
+                    || mnemonic == UbplMnemonic.LLONYS;
             }
         }
 

@@ -267,8 +267,6 @@ namespace UbplCommon.Processor
                 }
 
                 #endregion
-
-                this.flags = false;
             }
 
             if (ViewRegister)
@@ -365,6 +363,8 @@ namespace UbplCommon.Processor
                 default:
                     throw new ArgumentException($"Operand mode is Unknown ({mode})");
             }
+
+            this.flags = false;
         }
 
         #endregion
@@ -516,7 +516,6 @@ namespace UbplCommon.Processor
             if(this.flags)
             {
                 SetValue(modrm.ModeTail, modrm.RegTail, tmp, head);
-                this.flags = false;
             }
         }
 
