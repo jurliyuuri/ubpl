@@ -108,6 +108,7 @@ namespace UbplCommon.Processor
                 [Register.F5] = DEFAULT_INITIAL_F5,
                 [Register.F6] = 0,
                 [Register.XX] = DEFAULT_INITIAL_NX,
+                [Register.UL] = 0,
             };
 
             this.memory[DEFAULT_INITIAL_F5] = DEFAULT_RETURN_ADDRESS;
@@ -242,7 +243,7 @@ namespace UbplCommon.Processor
                         Ach(modrm, first, second);
                         break;
                     case 0x00000022:
-                        Injxx(modrm, first, second);
+                        Mte(modrm, first, second);
                         break;
                     case 0x00000028:
                         Lat(modrm, first, second);
@@ -251,7 +252,7 @@ namespace UbplCommon.Processor
                         Latsna(modrm, first, second);
                         break;
                     case 0x0000002A:
-                        Latkrz(modrm, first, second);
+                        Anf(modrm, first, second);
                         break;
                     case 0x0000002B:
                         Kak(modrm, first, second);
@@ -626,10 +627,11 @@ namespace UbplCommon.Processor
         void Fnx(ModRm modrm, uint head, uint tail)
         {
             uint tmp = tail;
+            uint xx = this.registers[Register.XX];
             (head, tail) = GetValue(modrm, head, tail);
 
-            SetValue(modrm.ModeTail, modrm.RegTail, tmp, this.registers[Register.XX]);
             this.registers[Register.XX] = head;
+            SetValue(modrm.ModeTail, modrm.RegTail, tmp, xx);
         }
 
         /// <summary>
@@ -647,16 +649,16 @@ namespace UbplCommon.Processor
         }
 
         /// <summary>
-        /// injxxの処理を行います．
-        /// これは"inj op1 op2 xx"の動作と等しくなります．
+        /// mteの処理を行います．
+        /// krz64 a &lt;&lt; 32 | b tmp と等しくなります．
         /// </summary>
-        void Injxx(ModRm modrm, uint head, uint tail)
+        void Mte(ModRm modrm, uint head, uint tail)
         {
-            uint tmp = tail;
+            uint originHead = head;
+            uint originTail = tail;
             (head, tail) = GetValue(modrm, head, tail);
 
-            SetValue(modrm.ModeTail, modrm.RegTail, tmp, head);
-            this.registers[Register.XX] = tail;
+            this.temporary = ((ulong)head << 32) | tail;
         }
 
         /// <summary>
@@ -682,9 +684,10 @@ namespace UbplCommon.Processor
         }
 
         /// <summary>
-        /// latkrzの処理を行います．
+        /// anfの処理を行います．
+        /// krz ((tmp >> 32) & 0x0000FFFF) A, krz (tmp & 0x0000FFFF) Bと等しくなります．
         /// </summary>
-        void Latkrz(ModRm modrm, uint head, uint tail)
+        void Anf(ModRm modrm, uint head, uint tail)
         {
             SetValue(modrm.ModeTail, modrm.RegTail, tail, (uint)(this.temporary >> 32));
             SetValue(modrm.ModeHead, modrm.RegHead, head, (uint)(this.temporary));

@@ -20,6 +20,7 @@ namespace UbplCommon.Translator
         protected static readonly Operand F5 = new Operand(Register.F5);
         protected static readonly Operand F6 = new Operand(Register.F6);
         protected static readonly Operand XX = new Operand(Register.XX);
+        private static readonly Operand UL = new Operand(Register.UL);
 
         protected static readonly FiType XTLO = new FiType(UbplMnemonic.XTLO);
         protected static readonly FiType XYLO = new FiType(UbplMnemonic.XYLO);
@@ -69,7 +70,7 @@ namespace UbplCommon.Translator
                     
                     writer.Write(ToBinary((uint)code.Mnemonic));
                     writer.Write(ToBinary(code.Modrm.Value));
-
+                    
                     if (code.Head.IsLabel)
                     {
                         writer.Write(ToBinary((uint)(this.labels[code.Head.Label] - (count + 16))));
@@ -549,22 +550,78 @@ namespace UbplCommon.Translator
         /// <param name="opd3">オペランド</param>
         protected void Inj(Operand opd1, Operand opd2, Operand opd3)
         {
-            if(opd1.Equals(opd3))
+            if (opd1.Equals(opd3))
             {
                 Append(UbplMnemonic.ACH, opd1, opd2);
             }
-            else if(opd3.IsReg && opd3.Reg == Register.XX)
-            {
-                Append(UbplMnemonic.INJXX, opd1, opd2);
-            }
-            else if(opd2.IsReg && opd2.Reg == Register.XX)
+            else if (opd2.IsReg && opd2.Reg == Register.XX)
             {
                 Append(UbplMnemonic.FNX, opd1, opd3);
             }
+            else if ((opd1.IsAddress && opd1.Reg == Register.XX)
+                || (opd2.IsAddress && opd2.Reg == Register.XX))
+            {
+                Operand first = ToSetiXX(opd1);
+                Operand second = ToSetiXX(opd2);
+                int id = this.codeList.Count;
+
+                Krz($"inj@xx@{id}", UL);
+                Krz(first, opd2);
+                Krz(second, opd3);
+                Nll($"inj@xx@{id}");
+                Krz(F0, F0);
+            }
             else
             {
-                Append(UbplMnemonic.KRZ, opd2, opd3);
-                Append(UbplMnemonic.KRZ, opd1, opd2);
+                Operand first = ToXX(opd1);
+                Operand second = ToXX(opd2);
+
+                int id = this.codeList.Count;
+                
+                Append(UbplMnemonic.MTE, first, second);
+                Append(UbplMnemonic.ANF, opd3, opd2);
+            }
+
+            Operand ToXX(Operand operand)
+            {
+                if (operand.Reg == Register.XX)
+                {
+                    if (operand.IsRegAndImm)
+                    {
+                        return new Operand(Register.XX, operand.Disp.Value + 16, false);
+                    }
+                    else
+                    {
+                        return new Operand(Register.XX, 16, false);
+                    }
+                }
+                else
+                {
+                    return operand;
+                }
+            }
+
+            Operand ToSetiXX(Operand operand)
+            {
+                if (operand.IsAddress && operand.Reg == Register.XX)
+                {
+                    if (operand.HasSecondReg)
+                    {
+                        return new Operand(Register.UL, (uint)(operand.SecondReg.Value), true);
+                    }
+                    else if (operand.IsRegAndImm)
+                    {
+                        return new Operand(Register.UL, operand.Disp.Value, true);
+                    }
+                    else
+                    {
+                        return new Operand(Register.UL, true);
+                    }
+                }
+                else
+                {
+                    return operand;
+                }
             }
         }
 
@@ -588,7 +645,7 @@ namespace UbplCommon.Translator
         protected void Lat(Operand opd1, Operand opd2, Operand opd3)
         {
             Append(UbplMnemonic.LAT, opd1, opd2);
-            Append(UbplMnemonic.LATKRZ, opd2, opd3);
+            Append(UbplMnemonic.ANF, opd2, opd3);
         }
 
         /// <summary>
@@ -611,7 +668,7 @@ namespace UbplCommon.Translator
         protected void Latsna(Operand opd1, Operand opd2, Operand opd3)
         {
             Append(UbplMnemonic.LATSNA, opd1, opd2);
-            Append(UbplMnemonic.LATKRZ, opd2, opd3);
+            Append(UbplMnemonic.ANF, opd2, opd3);
         }
     }
 

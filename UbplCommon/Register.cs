@@ -16,6 +16,7 @@ namespace UbplCommon
         F5 = 0x5U,
         F6 = 0x6U,
         XX = 0x7U,
+        UL = 0x8U,
 
         L0 = XMM | F0,
         L1 = XMM | F1,

@@ -113,7 +113,7 @@ namespace UbplCommon
         
         /// <summary>
         /// 関数等呼び出し．
-        /// inj A xx f5@と同等
+        /// inj A xx Bと同等
         /// </summary>
         FNX = 0x00000020,
 
@@ -124,9 +124,9 @@ namespace UbplCommon
         ACH = 0x00000021,
 
         /// <summary>
-        /// inj A B xxと同等
+        /// krz64 a &lt;&lt; 32 | b tmp と同等
         /// </summary>
-        INJXX = 0x00000022,
+        MTE = 0x00000022,
 
         /// <summary>
         /// 符号無し乗算
@@ -142,7 +142,7 @@ namespace UbplCommon
         /// 乗算結果設定
         /// krz ((tmp >> 32) & 0x0000FFFF) A, krz (tmp & 0x0000FFFF) Bと同等
         /// </summary>
-        LATKRZ = 0x0000002A,
+        ANF = 0x0000002A,
 
         /// <summary>
         /// 符号無し除算
