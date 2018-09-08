@@ -20,7 +20,7 @@ namespace UbplCommon.Translator
         protected static readonly Operand F5 = new Operand(Register.F5);
         protected static readonly Operand F6 = new Operand(Register.F6);
         protected static readonly Operand XX = new Operand(Register.XX);
-        private static readonly Operand UL = new Operand(Register.UL);
+        protected static readonly Operand UL = new Operand(Register.UL);
 
         protected static readonly FiType XTLO = new FiType(Mnemonic.XTLO);
         protected static readonly FiType XYLO = new FiType(Mnemonic.XYLO);
@@ -53,7 +53,7 @@ namespace UbplCommon.Translator
         {
             return new Operand(label, address);
         }
-        
+
         /// <summary>
         /// 指定されたファイル名のファイルにバイナリを書き込みます
         /// </summary>
@@ -66,11 +66,9 @@ namespace UbplCommon.Translator
 
                 foreach (var code in this.codeList)
                 {
-                    bool isFi = IsFiMode(code.Mnemonic);
-                    
                     writer.Write(ToBinary((uint)code.Mnemonic));
                     writer.Write(ToBinary(code.Modrm.Value));
-                    
+
                     if (code.Head.IsLabel)
                     {
                         writer.Write(ToBinary((uint)(this.labels[code.Head.Label] - (count + 16))));
@@ -87,56 +85,22 @@ namespace UbplCommon.Translator
                     {
                         writer.Write(ToBinary((uint)code.Head.SecondReg.Value));
                     }
-
-                    if(isFi)
+                    
+                    if (code.Tail.IsLabel)
                     {
-                        if (code.Tail.IsLabel)
-                        {
-                            writer.Write(ToBinary((uint)(this.labels[code.Tail.Label] - (count + 16))));
-                        }
-                        else if (code.Tail.IsReg)
-                        {
-                            writer.Write(0U);
-                        }
-                        else if (code.Tail.IsImm || code.Tail.IsRegAndImm)
-                        {
-                            writer.Write(ToBinary(code.Tail.Disp.Value));
-                        }
-                        else if (code.Tail.HasSecondReg)
-                        {
-                            writer.Write(ToBinary((uint)code.Tail.SecondReg.Value));
-                        }
-
+                        writer.Write(ToBinary((uint)(this.labels[code.Tail.Label] - (count + 16))));
                     }
-                    else
+                    else if (code.Tail.IsReg)
                     {
-                        if (code.Tail.IsLabel)
-                        {
-                            throw new ArgumentException($"Invalid Operand: {code} count:{count}");
-                        }
-                        else if (code.Tail.IsReg)
-                        {
-                            writer.Write(0U);
-                        }
-                        else if (code.Tail.IsRegAndImm)
-                        {
-                            writer.Write(ToBinary(code.Tail.Disp.Value));
-                        }
-                        else if (code.Tail.IsImm)
-                        {
-                            if (code.Tail.IsAddress)
-                            {
-                                writer.Write(ToBinary(code.Tail.Disp.Value));
-                            }
-                            else
-                            {
-                                throw new ArgumentException($"Invalid Operand: {code} count:{count}");
-                            }
-                        }
-                        else if (code.Tail.HasSecondReg)
-                        {
-                            writer.Write(ToBinary((uint)code.Tail.SecondReg.Value));
-                        }
+                        writer.Write(0U);
+                    }
+                    else if (code.Tail.IsImm || code.Tail.IsRegAndImm)
+                    {
+                        writer.Write(ToBinary(code.Tail.Disp.Value));
+                    }
+                    else if (code.Tail.HasSecondReg)
+                    {
+                        writer.Write(ToBinary((uint)code.Tail.SecondReg.Value));
                     }
 
                     count += 16;
@@ -154,43 +118,13 @@ namespace UbplCommon.Translator
 
                 return buffer;
             }
-
-            bool IsFiMode(Mnemonic mnemonic)
-            {
-                return mnemonic == Mnemonic.XTLO
-                    || mnemonic == Mnemonic.XYLO
-                    || mnemonic == Mnemonic.CLO
-                    || mnemonic == Mnemonic.XOLO
-                    || mnemonic == Mnemonic.LLO
-                    || mnemonic == Mnemonic.NIV
-                    || mnemonic == Mnemonic.XTLONYS
-                    || mnemonic == Mnemonic.XYLONYS
-                    || mnemonic == Mnemonic.XOLONYS
-                    || mnemonic == Mnemonic.LLONYS;
-            }
         }
 
         #region GeneratingMethod
 
-        private void Append(Mnemonic mne, Operand head, Operand tail, bool isCheck = true)
+        private void Append(Mnemonic mne, Operand head, Operand tail)
         {
             ModRm modrm = CreateModRm(head, tail);
-
-            if (isCheck)
-            {
-                if (modrm.ModeHead == OperandMode.REG32_IMM32 || modrm.ModeHead == OperandMode.REG32_REG32
-                    || modrm.ModeHead == OperandMode.ADDR_IMM32)
-                {
-                    throw new ArgumentException($"Invalid Aruguments :{head}");
-                }
-
-                if (modrm.ModeTail == OperandMode.REG32_IMM32 || modrm.ModeTail == OperandMode.REG32_REG32
-                    || modrm.ModeTail == OperandMode.ADDR_IMM32)
-                {
-                    throw new ArgumentException($"Invalid Aruguments :{tail}");
-                }
-            }
-
 
             this.codeList.Add(new Code
             {
@@ -201,6 +135,11 @@ namespace UbplCommon.Translator
             });
         }
 
+        private bool CheckOperand(Operand opd)
+        {
+            return !opd.IsAddress && (opd.HasSecondReg || opd.IsImm || opd.IsRegAndImm);
+        }
+
         private ModRm CreateModRm(Operand head, Operand tail)
         {
             ModRm modrm = new ModRm();
@@ -209,7 +148,8 @@ namespace UbplCommon.Translator
 
             return modrm;
 
-            (OperandMode, Register) GetValue(Operand value) {
+            (OperandMode, Register) GetValue(Operand value)
+            {
                 OperandMode mode = OperandMode.REG32;
                 Register register = Register.F0;
 
@@ -239,7 +179,7 @@ namespace UbplCommon.Translator
                     register = value.Reg.Value;
                 }
 
-                if(value.IsAddress)
+                if (value.IsAddress)
                 {
                     mode |= OperandMode.ADDRESS;
                 }
@@ -251,14 +191,14 @@ namespace UbplCommon.Translator
         #endregion
 
         #region Operation
-        
+
         /// <summary>
         /// 後置ラベルを定義します．
         /// </summary>
         /// <param name="name">ラベル名</param>
         protected void L(string name)
         {
-            if(this.codeList.Any())
+            if (this.codeList.Any())
             {
                 this.labels.Add(name, (this.codeList.Count - 1) * 16);
             }
@@ -267,7 +207,7 @@ namespace UbplCommon.Translator
                 throw new ArgumentException();
             }
         }
-        
+
         /// <summary>
         /// 前置ラベルを定義します．
         /// </summary>
@@ -286,7 +226,7 @@ namespace UbplCommon.Translator
         {
             Ata(new Operand(val), opd);
         }
-        
+
         /// <summary>
         /// ataを表すメソッドです．
         /// </summary>
@@ -294,6 +234,10 @@ namespace UbplCommon.Translator
         /// <param name="opd2">オペランド</param>
         protected void Ata(Operand opd1, Operand opd2)
         {
+            if(CheckOperand(opd2))
+            {
+                throw new ArgumentException($"Invalid Operand: {opd2} count:{this.codeList.Count}");
+            }
             Append(Mnemonic.ATA, opd1, opd2);
         }
 
@@ -306,7 +250,7 @@ namespace UbplCommon.Translator
         {
             Nta(new Operand(val), opd);
         }
-        
+
         /// <summary>
         /// ntaを表すメソッドです．
         /// </summary>
@@ -314,6 +258,10 @@ namespace UbplCommon.Translator
         /// <param name="opd2">オペランド</param>
         protected void Nta(Operand opd1, Operand opd2)
         {
+            if (CheckOperand(opd2))
+            {
+                throw new ArgumentException($"Invalid Operand: {opd2} count:{this.codeList.Count}");
+            }
             Append(Mnemonic.NTA, opd1, opd2);
         }
 
@@ -334,6 +282,10 @@ namespace UbplCommon.Translator
         /// <param name="opd2">オペランド</param>
         protected void Ada(Operand opd1, Operand opd2)
         {
+            if (CheckOperand(opd2))
+            {
+                throw new ArgumentException($"Invalid Operand: {opd2} count:{this.codeList.Count}");
+            }
             Append(Mnemonic.ADA, opd1, opd2);
         }
 
@@ -354,6 +306,10 @@ namespace UbplCommon.Translator
         /// <param name="opd2">オペランド</param>
         protected void Ekc(Operand opd1, Operand opd2)
         {
+            if (CheckOperand(opd2))
+            {
+                throw new ArgumentException($"Invalid Operand: {opd2} count:{this.codeList.Count}");
+            }
             Append(Mnemonic.EKC, opd1, opd2);
         }
 
@@ -374,6 +330,10 @@ namespace UbplCommon.Translator
         /// <param name="opd2">オペランド</param>
         protected void Dto(Operand opd1, Operand opd2)
         {
+            if (CheckOperand(opd2))
+            {
+                throw new ArgumentException($"Invalid Operand: {opd2} count:{this.codeList.Count}");
+            }
             Append(Mnemonic.DTO, opd1, opd2);
         }
 
@@ -394,6 +354,10 @@ namespace UbplCommon.Translator
         /// <param name="opd2">オペランド</param>
         protected void Dro(Operand opd1, Operand opd2)
         {
+            if (CheckOperand(opd2))
+            {
+                throw new ArgumentException($"Invalid Operand: {opd2} count:{this.codeList.Count}");
+            }
             Append(Mnemonic.DRO, opd1, opd2);
         }
 
@@ -414,6 +378,10 @@ namespace UbplCommon.Translator
         /// <param name="opd2">オペランド</param>
         protected void Dtosna(Operand opd1, Operand opd2)
         {
+            if (CheckOperand(opd2))
+            {
+                throw new ArgumentException($"Invalid Operand: {opd2} count:{this.codeList.Count}");
+            }
             Append(Mnemonic.DTOSNA, opd1, opd2);
         }
 
@@ -434,18 +402,13 @@ namespace UbplCommon.Translator
         /// <param name="opd2">オペランド</param>
         protected void Dal(Operand opd1, Operand opd2)
         {
+            if (CheckOperand(opd2))
+            {
+                throw new ArgumentException($"Invalid Operand: {opd2} count:{this.codeList.Count}");
+            }
             Append(Mnemonic.DAL, opd1, opd2);
         }
-
-        /// <summary>
-        /// nacを表すメソッドです．
-        /// </summary>
-        /// <param name="opd">オペランド</param>
-        protected void Nac(Operand opd)
-        {
-            Append(Mnemonic.DAL, new Operand(0), opd);
-        }
-
+        
         /// <summary>
         /// krzを表すメソッドです．
         /// </summary>
@@ -459,7 +422,7 @@ namespace UbplCommon.Translator
         /// <summary>
         /// krzを表すメソッドです．
         /// </summary>
-        /// <param name="name">ラベルや関数名</param>
+        /// <param name="name">ジャンプラベル</param>
         /// <param name="opd">オペランド</param>
         protected void Krz(string name, Operand opd)
         {
@@ -473,6 +436,10 @@ namespace UbplCommon.Translator
         /// <param name="opd2">オペランド</param>
         protected void Krz(Operand opd1, Operand opd2)
         {
+            if (CheckOperand(opd2))
+            {
+                throw new ArgumentException($"Invalid Operand: {opd2} count:{this.codeList.Count}");
+            }
             Append(Mnemonic.KRZ, opd1, opd2);
         }
 
@@ -489,7 +456,7 @@ namespace UbplCommon.Translator
         /// <summary>
         /// malkrzを表すメソッドです．
         /// </summary>
-        /// <param name="name">ラベルや関数名</param>
+        /// <param name="name">ジャンプラベル</param>
         /// <param name="opd">オペランド</param>
         protected void Malkrz(string name, Operand opd)
         {
@@ -503,6 +470,10 @@ namespace UbplCommon.Translator
         /// <param name="opd2">オペランド</param>
         protected void Malkrz(Operand opd1, Operand opd2)
         {
+            if (CheckOperand(opd2))
+            {
+                throw new ArgumentException($"Invalid Operand: {opd2} count:{this.codeList.Count}");
+            }
             Append(Mnemonic.MALKRZ, opd1, opd2);
         }
 
@@ -537,115 +508,162 @@ namespace UbplCommon.Translator
         }
 
         /// <summary>
-        /// injを表すメソッドです．
+        /// fnxを表すメソッドです．
         /// </summary>
         /// <param name="val">即値</param>
-        /// <param name="opd2">オペランド</param>
-        /// <param name="opd3">オペランド</param>
-        protected void Inj(uint val, Operand opd2, Operand opd3)
+        /// <param name="opd">オペランド</param>
+        protected void Fnx(uint val, Operand opd)
         {
-            Inj(new Operand(val), opd2, opd3);
+            Fnx(new Operand(val), opd);
         }
 
         /// <summary>
-        /// injを表すメソッドです．
+        /// fnxを表すメソッドです．
         /// </summary>
-        /// <param name="name">ラベルや関数名</param>
-        /// <param name="opd2">オペランド</param>
-        /// <param name="opd3">オペランド</param>
-        protected void Inj(string name, Operand opd2, Operand opd3)
+        /// <param name="name">ジャンプラベル</param>
+        /// <param name="opd">オペランド</param>
+        protected void Fnx(string name, Operand opd)
         {
-            Inj(new Operand(name, true), opd2, opd3);
+            Fnx(new Operand(name, true), opd);
         }
 
         /// <summary>
-        /// injを表すメソッドです．
+        /// fnxを表すメソッドです．
         /// </summary>
         /// <param name="opd1">オペランド</param>
         /// <param name="opd2">オペランド</param>
-        /// <param name="opd3">オペランド</param>
-        protected void Inj(Operand opd1, Operand opd2, Operand opd3)
+        protected void Fnx(Operand opd1, Operand opd2)
         {
-            if (opd2.IsReg && opd2.Reg == Register.XX)
-            {
-                Append(Mnemonic.FNX, opd1, opd3);
-            }
-            else if ((opd1.IsAddress && opd1.Reg == Register.XX)
-                || (opd2.IsAddress && opd2.Reg == Register.XX))
-            {
-                Operand first = ToSetiXX(opd1);
-                Operand second = ToSetiXX(opd2);
+            Append(Mnemonic.FNX, opd1, opd2);
+        }
 
-                Append(Mnemonic.KRZ, XX + 48, UL, false);
-                Append(Mnemonic.MTE, first, second);
-                Append(Mnemonic.ANF, opd3, opd2);
-            }
-            else
+        /// <summary>
+        /// mteを表すメソッドです．
+        /// </summary>
+        /// <param name="val">即値</param>
+        /// <param name="opd">オペランド</param>
+        protected void Mte(uint val, Operand opd)
+        {
+            Mte(new Operand(val), opd);
+        }
+
+        /// <summary>
+        /// mteを表すメソッドです．
+        /// </summary>
+        /// <param name="val1">即値</param>
+        /// <param name="val2">即値</param>
+        protected void Mte(uint val1, uint val2)
+        {
+            Mte(new Operand(val1), new Operand(val2));
+        }
+
+        /// <summary>
+        /// mteを表すメソッドです．
+        /// </summary>
+        /// <param name="val">即値</param>
+        /// <param name="name">即値</param>
+        protected void Mte(uint val, string name)
+        {
+            Mte(new Operand(val), new Operand(name, true));
+        }
+
+        /// <summary>
+        /// mteを表すメソッドです．
+        /// </summary>
+        /// <param name="name">ジャンプラベル</param>
+        /// <param name="opd">オペランド</param>
+        protected void Mte(string name, Operand opd)
+        {
+            Mte(new Operand(name, true), opd);
+        }
+
+        /// <summary>
+        /// mteを表すメソッドです．
+        /// </summary>
+        /// <param name="name">ジャンプラベル</param>
+        /// <param name="val">即値</param>
+        protected void Mte(string name, uint val)
+        {
+            Mte(new Operand(name, true), new Operand(val));
+        }
+
+        /// <summary>
+        /// mteを表すメソッドです．
+        /// </summary>
+        /// <param name="name1">ジャンプラベル</param>
+        /// <param name="name2">ジャンプラベル</param>
+        protected void Mte(string name1, string name2)
+        {
+            Mte(new Operand(name1, true), new Operand(name2, true));
+        }
+
+        /// <summary>
+        /// mteを表すメソッドです．
+        /// </summary>
+        /// <param name="opd">オペランド</param>
+        /// <param name="val">即値</param>
+        protected void Mte(Operand opd, uint val)
+        {
+            Mte(opd, new Operand(val));
+        }
+
+        /// <summary>
+        /// mteを表すメソッドです．
+        /// </summary>
+        /// <param name="opd">オペランド</param>
+        /// <param name="name">ジャンプラベル</param>
+        protected void Mte(Operand opd, string name)
+        {
+            Mte(opd, new Operand(name, true));
+        }
+
+        /// <summary>
+        /// mteを表すメソッドです．
+        /// </summary>
+        /// <param name="opd1">オペランド</param>
+        /// <param name="opd2">オペランド</param>
+        protected void Mte(Operand opd1, Operand opd2)
+        {
+            Append(Mnemonic.MTE, opd1, opd2);
+        }
+
+        /// <summary>
+        /// anfを表すメソッドです．
+        /// </summary>
+        /// <param name="opd1">オペランド</param>
+        /// <param name="opd2">オペランド</param>
+        protected void Anf(Operand opd1, Operand opd2)
+        {
+            if (CheckOperand(opd1))
             {
-                Operand first = ToXX(opd1);
-                Operand second = ToXX(opd2);
-                
-                Append(Mnemonic.MTE, first, second);
-                Append(Mnemonic.ANF, opd3, opd2);
+                throw new ArgumentException($"Invalid Operand: {opd1} count:{this.codeList.Count}");
             }
 
-            Operand ToXX(Operand operand)
+            if (CheckOperand(opd2))
             {
-                if (operand.Reg == Register.XX)
-                {
-                    if (operand.IsRegAndImm)
-                    {
-                        return new Operand(Register.XX, operand.Disp.Value + 16, false);
-                    }
-                    else
-                    {
-                        return new Operand(Register.XX, 16, false);
-                    }
-                }
-                else
-                {
-                    return operand;
-                }
+                throw new ArgumentException($"Invalid Operand: {opd2} count:{this.codeList.Count}");
             }
-
-            Operand ToSetiXX(Operand operand)
-            {
-                if (operand.IsAddress)
-                {
-                    if(operand.Reg == Register.XX)
-                    {
-                        if (operand.HasSecondReg)
-                        {
-                            return new Operand(Register.UL, (uint)(operand.SecondReg.Value), true);
-                        }
-                        else if (operand.IsRegAndImm)
-                        {
-                            return new Operand(Register.UL, operand.Disp.Value, true);
-                        }
-                        else
-                        {
-                            return new Operand(Register.UL, true);
-                        }
-                    }
-                    else if (operand.HasSecondReg && operand.SecondReg == Register.XX)
-                    {
-                        return new Operand(Register.UL, (uint)(operand.Reg.Value), true);
-                    }
-                }
-
-                return operand;
-            }
+            Append(Mnemonic.ANF, opd1, opd2);
         }
 
         /// <summary>
         /// latを表すメソッドです．
         /// </summary>
         /// <param name="val">即値</param>
-        /// <param name="opd2">オペランド</param>
-        /// <param name="opd3">オペランド</param>
-        protected void Lat(uint val, Operand opd2, Operand opd3)
+        /// <param name="opd">オペランド</param>
+        protected void Lat(uint val, Operand opd)
         {
-            Lat(new Operand(val), opd2, opd3);
+            Lat(new Operand(val), opd);
+        }
+
+        /// <summary>
+        /// latを表すメソッドです．
+        /// </summary>
+        /// <param name="opd">オペランド</param>
+        /// <param name="val">即値</param>
+        protected void Lat(Operand opd, uint val)
+        {
+            Lat(opd, new Operand(val));
         }
 
         /// <summary>
@@ -653,22 +671,29 @@ namespace UbplCommon.Translator
         /// </summary>
         /// <param name="opd1">オペランド</param>
         /// <param name="opd2">オペランド</param>
-        /// <param name="opd3">オペランド</param>
-        protected void Lat(Operand opd1, Operand opd2, Operand opd3)
+        protected void Lat(Operand opd1, Operand opd2)
         {
             Append(Mnemonic.LAT, opd1, opd2);
-            Append(Mnemonic.ANF, opd2, opd3);
         }
 
         /// <summary>
         /// latsnaを表すメソッドです．
         /// </summary>
         /// <param name="val">即値</param>
-        /// <param name="opd2">オペランド</param>
-        /// <param name="opd3">オペランド</param>
-        protected void Latsna(uint val, Operand opd2, Operand opd3)
+        /// <param name="opd">オペランド</param>
+        protected void Latsna(Operand opd, uint val)
         {
-            Latsna(new Operand(val), opd2, opd3);
+            Latsna(new Operand(val), opd);
+        }
+
+        /// <summary>
+        /// latsnaを表すメソッドです．
+        /// </summary>
+        /// <param name="val">即値</param>
+        /// <param name="opd">オペランド</param>
+        protected void Latsna(uint val, Operand opd)
+        {
+            Latsna(new Operand(val), opd);
         }
 
         /// <summary>
@@ -676,11 +701,9 @@ namespace UbplCommon.Translator
         /// </summary>
         /// <param name="opd1">オペランド</param>
         /// <param name="opd2">オペランド</param>
-        /// <param name="opd3">オペランド</param>
-        protected void Latsna(Operand opd1, Operand opd2, Operand opd3)
+        protected void Latsna(Operand opd1, Operand opd2)
         {
             Append(Mnemonic.LATSNA, opd1, opd2);
-            Append(Mnemonic.ANF, opd2, opd3);
         }
     }
 

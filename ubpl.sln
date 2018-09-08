@@ -7,7 +7,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UbplCommon", "UbplCommon\Ub
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ubpl", "Ubpl\Ubpl.csproj", "{F5A844F4-E585-4CBA-B8E3-1C5C2BC52604}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ubplla", "Ubplla\Ubplla.csproj", "{30CAD368-B737-49A2-BE51-3CCF96434C25}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ubpl2003lk", "Ubpl2003lk\Ubpl2003lk.csproj", "{30CAD368-B737-49A2-BE51-3CCF96434C25}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

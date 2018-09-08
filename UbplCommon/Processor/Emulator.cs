@@ -161,7 +161,7 @@ namespace UbplCommon.Processor
                         continue;
                     }
 
-                    uint code = this.memory[this.registers[Register.XX]];
+                    Mnemonic code = (Mnemonic)this.memory[this.registers[Register.XX]];
                     //Console.WriteLine("nx = {0:X08}, code = {1:X08}", this.registers[Register.XX], code);
 
                     this.registers[Register.XX] += 4;
@@ -178,89 +178,86 @@ namespace UbplCommon.Processor
                     #region コード分岐
                     switch (code)
                     {
-                        case 0x00000000:
+                        case Mnemonic.ATA:
                             Ata(modrm, first, second);
                             break;
-                        case 0x00000001:
+                        case Mnemonic.NTA:
                             Nta(modrm, first, second);
                             break;
-                        case 0x00000002:
+                        case Mnemonic.ADA:
                             Ada(modrm, first, second);
                             break;
-                        case 0x00000003:
+                        case Mnemonic.EKC:
                             Ekc(modrm, first, second);
                             break;
-                        case 0x00000004:
+                        case Mnemonic.DTO:
                             Dto(modrm, first, second);
                             break;
-                        case 0x00000005:
+                        case Mnemonic.DRO:
                             Dro(modrm, first, second);
                             break;
-                        case 0x00000006:
+                        case Mnemonic.DTOSNA:
                             Dtosna(modrm, first, second);
                             break;
-                        case 0x00000007:
+                        case Mnemonic.DAL:
                             Dal(modrm, first, second);
                             break;
-                        case 0x00000008:
+                        case Mnemonic.KRZ:
                             Krz(modrm, first, second);
                             break;
-                        case 0x00000009:
+                        case Mnemonic.MALKRZ:
                             Malkrz(modrm, first, second);
                             break;
-                        case 0x00000010:
+                        case Mnemonic.LLONYS:
                             Llonys(modrm, first, second);
                             break;
-                        case 0x00000011:
+                        case Mnemonic.XTLONYS:
                             Xtlonys(modrm, first, second);
                             break;
-                        case 0x00000012:
+                        case Mnemonic.XOLONYS:
                             Xolonys(modrm, first, second);
                             break;
-                        case 0x00000013:
+                        case Mnemonic.XYLONYS:
                             Xylonys(modrm, first, second);
                             break;
-                        case 0x00000016:
+                        case Mnemonic.CLO:
                             Clo(modrm, first, second);
                             break;
-                        case 0x00000017:
+                        case Mnemonic.NIV:
                             Niv(modrm, first, second);
                             break;
-                        case 0x00000018:
+                        case Mnemonic.LLO:
                             Llo(modrm, first, second);
                             break;
-                        case 0x00000019:
+                        case Mnemonic.XTLO:
                             Xtlo(modrm, first, second);
                             break;
-                        case 0x0000001A:
+                        case Mnemonic.XOLO:
                             Xolo(modrm, first, second);
                             break;
-                        case 0x0000001B:
+                        case Mnemonic.XYLO:
                             Xylo(modrm, first, second);
                             break;
-                        case 0x00000020:
+                        case Mnemonic.FNX:
                             Fnx(modrm, first, second);
                             break;
-                        case 0x00000021:
+                        case Mnemonic.MTE:
                             Mte(modrm, first, second);
                             break;
-                        case 0x00000028:
-                            Lat(modrm, first, second);
-                            break;
-                        case 0x00000029:
-                            Latsna(modrm, first, second);
-                            break;
-                        case 0x0000002A:
+                        case Mnemonic.ANF:
                             Anf(modrm, first, second);
                             break;
-                        case 0x0000002B:
+                        case Mnemonic.LAT:
+                            Lat(modrm, first, second);
+                            break;
+                        case Mnemonic.LATSNA:
+                            Latsna(modrm, first, second);
+                            break;
+                        case Mnemonic.KAK:
                             Kak(modrm, first, second);
                             break;
-                        case 0x0000002C:
+                        case Mnemonic.KAKSNA:
                             Kaksna(modrm, first, second);
-                            break;
-                        case 0x0000002D:
-                            Kakkrz(modrm, first, second);
                             break;
                         default:
                             throw new NotImplementedException($"Not Implemented: {code:X}");
@@ -661,7 +658,7 @@ namespace UbplCommon.Processor
         
         /// <summary>
         /// mteの処理を行います．
-        /// krz64 a &lt;&lt; 32 | b tmp と等しくなります．
+        /// krz64 tail &lt;&lt; 32 | head tmp と等しくなります．
         /// </summary>
         void Mte(ModRm modrm, uint head, uint tail)
         {
@@ -669,7 +666,7 @@ namespace UbplCommon.Processor
             uint originTail = tail;
             (head, tail) = GetValue(modrm, head, tail);
 
-            this.temporary = ((ulong)head << 32) | tail;
+            this.temporary = ((ulong)tail << 32) | head;
         }
 
         /// <summary>
@@ -696,7 +693,7 @@ namespace UbplCommon.Processor
 
         /// <summary>
         /// anfの処理を行います．
-        /// krz ((tmp >> 32) & 0x0000FFFF) A, krz (tmp & 0x0000FFFF) Bと等しくなります．
+        /// krz ((tmp >> 32) & 0x0000FFFF) tail, krz (tmp & 0x0000FFFF) headと等しくなります．
         /// </summary>
         void Anf(ModRm modrm, uint head, uint tail)
         {
@@ -719,15 +716,7 @@ namespace UbplCommon.Processor
         {
 
         }
-
-        /// <summary>
-        /// kakkrzの処理を行います．
-        /// </summary>
-        void Kakkrz(ModRm modrm, uint head, uint tail)
-        {
-
-        }
-
+        
         #endregion
     }
 }

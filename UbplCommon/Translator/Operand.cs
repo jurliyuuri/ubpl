@@ -8,11 +8,11 @@ namespace UbplCommon.Translator
 {
     public class Operand
     {
-        internal Register? Reg { get; }
-        internal Register? SecondReg { get; }
-        internal uint? Disp { get; }
-        internal string Label { get; }
-        internal bool IsAddress { get; }
+        public Register? Reg { get; }
+        public Register? SecondReg { get; }
+        public uint? Disp { get; }
+        public string Label { get; }
+        public bool IsAddress { get; }
 
         Operand(Register? reg, Register? second, uint? val, string label, bool address = false)
         {
@@ -23,30 +23,30 @@ namespace UbplCommon.Translator
             this.Label = label;
         }
 
-        internal bool IsImm
+        public bool IsImm
         {
             get => !Reg.HasValue && !SecondReg.HasValue
                 && Disp.HasValue && string.IsNullOrEmpty(Label);
         }
 
-        internal bool IsReg
+        public bool IsReg
         {
             get => Reg.HasValue && !SecondReg.HasValue
                 && !Disp.HasValue && string.IsNullOrEmpty(Label);
         }
 
-        internal bool IsLabel
+        public bool IsLabel
         {
             get => !string.IsNullOrEmpty(Label);
         }
 
-        internal bool IsRegAndImm
+        public bool IsRegAndImm
         {
             get => Reg.HasValue && !SecondReg.HasValue
                 && Disp.HasValue && string.IsNullOrEmpty(Label);
         }
 
-        internal bool HasSecondReg
+        public bool HasSecondReg
         {
             get => Reg.HasValue && SecondReg.HasValue
                 && !Disp.HasValue && string.IsNullOrEmpty(Label);
@@ -64,12 +64,7 @@ namespace UbplCommon.Translator
             {
                 throw new InvalidOperationException();
             }
-
-            if(this.IsImm || this.IsLabel)
-            {
-                throw new InvalidOperationException();
-            }
-
+            
             return new Operand(this.Reg, this.SecondReg, this.Disp, null, true);
         }
 

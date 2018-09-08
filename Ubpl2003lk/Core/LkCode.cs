@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Ubplla.Core
+namespace Ubpl2003lk.Core
 {
     /// <summary>
     /// 中間表現を保持するためのクラスです．
@@ -16,7 +16,7 @@ namespace Ubplla.Core
         /// <summary>
         /// ニーモニック
         /// </summary>
-        public Mnemonic2003lk Mnemonic { get; set; }
+        public Mnemonic Mnemonic { get; set; }
         
         /// <summary>
         /// 最初の値

@@ -4,12 +4,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace UbplCommon
+namespace Ubpl2003lk
 {
     /// <summary>
     /// 命令の種類を表す列挙体です．
     /// </summary>
-    public enum Mnemonic2003lk : byte
+    public enum Mnemonic : byte
     {
         /// <summary>
         /// 加算

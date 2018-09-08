@@ -5,9 +5,10 @@ using System.Text;
 using System.Threading.Tasks;
 using UbplCommon;
 using UbplCommon.Translator;
+using Ubpl2003lk;
 using System.IO;
 
-namespace Ubplla.Core
+namespace Ubpl2003lk.Core
 {
     class LkAssembler : CodeGenerator
     {
@@ -47,7 +48,7 @@ namespace Ubplla.Core
                 case 1:
                     codeList.Insert(0, new LkCode
                     {
-                        Mnemonic = Mnemonic2003lk.KRZ,
+                        Mnemonic = Mnemonic.KRZ,
                         Head = ToOperand(FASAL_LABEL, false),
                         Tail = XX,
                     });
@@ -61,6 +62,48 @@ namespace Ubplla.Core
             Create(codeList);
             Write(outFile);
         }
+
+        #region 共通
+        private Operand ToRegisterOperand(Register register)
+        {
+            Operand operand;
+            switch (register)
+            {
+                case Register.F0:
+                    operand = F0;
+                    break;
+                case Register.F1:
+                    operand = F1;
+                    break;
+                case Register.F2:
+                    operand = F2;
+                    break;
+                case Register.F3:
+                    operand = F3;
+                    break;
+                case Register.F4:
+                    operand = F4;
+                    break;
+                case Register.F5:
+                    operand = F5;
+                    break;
+                case Register.F6:
+                    operand = F6;
+                    break;
+                case Register.XX:
+                    operand = XX;
+                    break;
+                case Register.UL:
+                    operand = UL;
+                    break;
+                default:
+                    throw new NotSupportedException($"Not Supported register: {register}");
+            }
+
+            return operand;
+        }
+
+        #endregion
 
         #region 字句解析
 
@@ -306,7 +349,7 @@ namespace Ubplla.Core
 
                             codeList.Add(new LkCode
                             {
-                                Mnemonic = (Mnemonic2003lk)Enum.Parse(typeof(Mnemonic2003lk), str, true),
+                                Mnemonic = (Mnemonic)Enum.Parse(typeof(Mnemonic), str, true),
                                 Head = Convert(head, fileCount),
                                 Tail = Convert(tail, fileCount),
                             });
@@ -328,7 +371,7 @@ namespace Ubplla.Core
 
                             codeList.Add(new LkCode
                             {
-                                Mnemonic = (Mnemonic2003lk)Enum.Parse(typeof(Mnemonic2003lk), str, true),
+                                Mnemonic = (Mnemonic)Enum.Parse(typeof(Mnemonic), str, true),
                                 Head = Convert(head, fileCount),
                                 Middle = Convert(middle, fileCount),
                                 Tail = Convert(tail, fileCount),
@@ -339,15 +382,15 @@ namespace Ubplla.Core
                         case "nac":
                             codeList.Add(new LkCode
                             {
-                                Mnemonic = Mnemonic2003lk.DAL,
-                                Head = ToOperand(0),
+                                Mnemonic = Mnemonic.DAL,
+                                Head = ToRegisterOperand(0),
                                 Tail = Convert(wordList[++i], fileCount),
                             });
                             break;
                         case "fi":
                             head = wordList[++i];
                             tail = wordList[++i];
-                            bool isCompare = Enum.TryParse(wordList[++i].ToUpper(), out Mnemonic2003lk mne);
+                            bool isCompare = Enum.TryParse(wordList[++i].ToUpper(), out Mnemonic mne);
 
                             codeList.Add(new LkCode
                             {
@@ -373,7 +416,7 @@ namespace Ubplla.Core
 
                             codeList.Add(new LkCode
                             {
-                                Mnemonic = Mnemonic2003lk.INJ,
+                                Mnemonic = Mnemonic.INJ,
                                 Head = Convert(head, fileCount),
                                 Middle = Convert(middle, fileCount),
                                 Tail = Convert(tail, fileCount),
@@ -417,31 +460,6 @@ namespace Ubplla.Core
 
         private Operand Convert(string str, int fileCount)
         {
-            Operand ToRegisterOperand(Register reg)
-            {
-                switch (reg)
-                {
-                    case Register.F0:
-                        return F0;
-                    case Register.F1:
-                        return F1;
-                    case Register.F2:
-                        return F2;
-                    case Register.F3:
-                        return F3;
-                    case Register.F4:
-                        return F4;
-                    case Register.F5:
-                        return F5;
-                    case Register.F6:
-                        return F6;
-                    case Register.XX:
-                        return XX;
-                    default:
-                        throw new ApplicationException($"InvalidParameter '{reg}'");
-                }
-            }
-            
             bool add = str.IndexOf('+') != -1;
             bool seti = str.Last() == '@';
             Operand result;
@@ -560,80 +578,169 @@ namespace Ubplla.Core
                 {
                     switch (code.Mnemonic)
                     {
-                        case Mnemonic2003lk.ATA:
+                        case Mnemonic.ATA:
                             Ata(code.Head, code.Tail);
                             break;
-                        case Mnemonic2003lk.NTA:
+                        case Mnemonic.NTA:
                             Nta(code.Head, code.Tail);
                             break;
-                        case Mnemonic2003lk.ADA:
+                        case Mnemonic.ADA:
                             Ada(code.Head, code.Tail);
                             break;
-                        case Mnemonic2003lk.EKC:
+                        case Mnemonic.EKC:
                             Ekc(code.Head, code.Tail);
                             break;
-                        case Mnemonic2003lk.DTO:
+                        case Mnemonic.DTO:
                             Dto(code.Head, code.Tail);
                             break;
-                        case Mnemonic2003lk.DRO:
+                        case Mnemonic.DRO:
                             Dro(code.Head, code.Tail);
                             break;
-                        case Mnemonic2003lk.DTOSNA:
+                        case Mnemonic.DTOSNA:
                             Dtosna(code.Head, code.Tail);
                             break;
-                        case Mnemonic2003lk.DAL:
+                        case Mnemonic.DAL:
                             Dal(code.Head, code.Tail);
                             break;
-                        case Mnemonic2003lk.KRZ:
+                        case Mnemonic.KRZ:
                             Krz(code.Head, code.Tail);
                             break;
-                        case Mnemonic2003lk.MALKRZ:
+                        case Mnemonic.MALKRZ:
                             Malkrz(code.Head, code.Tail);
                             break;
-                        case Mnemonic2003lk.LLONYS:
+                        case Mnemonic.LLONYS:
                             Fi(code.Head, code.Tail, LLONYS);
                             break;
-                        case Mnemonic2003lk.XTLONYS:
+                        case Mnemonic.XTLONYS:
                             Fi(code.Head, code.Tail, XTLONYS);
                             break;
-                        case Mnemonic2003lk.XOLONYS:
+                        case Mnemonic.XOLONYS:
                             Fi(code.Head, code.Tail, XOLONYS);
                             break;
-                        case Mnemonic2003lk.XYLONYS:
+                        case Mnemonic.XYLONYS:
                             Fi(code.Head, code.Tail, XYLONYS);
                             break;
-                        case Mnemonic2003lk.CLO:
+                        case Mnemonic.CLO:
                             Fi(code.Head, code.Tail, CLO);
                             break;
-                        case Mnemonic2003lk.NIV:
+                        case Mnemonic.NIV:
                             Fi(code.Head, code.Tail, NIV);
                             break;
-                        case Mnemonic2003lk.LLO:
+                        case Mnemonic.LLO:
                             Fi(code.Head, code.Tail, LLO);
                             break;
-                        case Mnemonic2003lk.XTLO:
+                        case Mnemonic.XTLO:
                             Fi(code.Head, code.Tail, XTLO);
                             break;
-                        case Mnemonic2003lk.XOLO:
+                        case Mnemonic.XOLO:
                             Fi(code.Head, code.Tail, XOLO);
                             break;
-                        case Mnemonic2003lk.XYLO:
+                        case Mnemonic.XYLO:
                             Fi(code.Head, code.Tail, XYLO);
                             break;
-                        case Mnemonic2003lk.INJ:
-                            Inj(code.Head, code.Middle, code.Tail);
+                        case Mnemonic.INJ:
+                            if(code.Middle.IsReg && !code.Middle.IsAddress && code.Middle.Reg == Register.XX)
+                            {
+                                Fnx(code.Head, code.Tail);
+                            }
+                            else if (code.Middle.IsAddress
+                                && (code.Middle.Reg == Register.XX || code.Middle.SecondReg == Register.XX))
+                            {
+                                Operand first;
+                                Operand second = ToSetiXX(code.Middle);
+                                if (code.Head.IsAddress)
+                                {
+                                    first = ToSetiXX(code.Head);
+                                }
+                                else if (code.Head.Reg == Register.XX)
+                                {
+                                    first = UL;
+                                }
+                                else
+                                {
+                                    first = code.Head;
+                                }
+
+                                Krz(XX + 32, UL);
+                                Mte(first, second);
+                                if(second.Reg == Register.UL)
+                                {
+                                    Anf(second, code.Tail);
+                                }
+                                else
+                                {
+                                    Anf(code.Middle, code.Tail);
+                                }
+                            }
+                            else
+                            {
+                                Operand first = ToXX(code.Head);
+                                Operand second = ToXX(code.Middle);
+
+                                Mte(first, second);
+                                Anf(code.Middle, code.Tail);
+                            }
                             break;
-                        case Mnemonic2003lk.LAT:
-                            Lat(code.Head, code.Middle, code.Tail);
+                        case Mnemonic.LAT:
+                            Lat(code.Head, code.Middle);
+                            Anf(code.Middle, code.Tail);
                             break;
-                        case Mnemonic2003lk.LATSNA:
-                            Latsna(code.Head, code.Middle, code.Tail);
+                        case Mnemonic.LATSNA:
+                            Latsna(code.Head, code.Middle);
+                            Anf(code.Middle, code.Tail);
                             break;
                         default:
                             throw new ApplicationException($"Unknown value: {code}");
                     }
                 }
             }
+        }
+
+        private Operand ToXX(Operand operand)
+        {
+            if (operand.Reg == Register.XX)
+            {
+                if (operand.IsRegAndImm)
+                {
+                    return XX + (operand.Disp.Value + 16);
+                }
+                else
+                {
+                    return XX + 16;
+                }
+            }
+            else
+            {
+                return operand;
+            }
+        }
+
+        private Operand ToSetiXX(Operand operand)
+        {
+            if (operand.IsAddress)
+            {
+                if (operand.Reg == Register.XX)
+                {
+                    if (operand.HasSecondReg)
+                    {
+                        return Seti(UL + ToRegisterOperand(operand.SecondReg.Value));
+                    }
+                    else if (operand.IsRegAndImm)
+                    {
+                        return Seti(UL + operand.Disp.Value);
+                    }
+                    else
+                    {
+                        return Seti(UL);
+                    }
+                }
+                else if (operand.HasSecondReg && operand.SecondReg == Register.XX)
+                {
+                    return Seti(UL + ToRegisterOperand(operand.Reg.Value));
+                }
+            }
+
+            return operand;
         }
 
         #endregion
