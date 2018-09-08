@@ -40,8 +40,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Mnemonic2003lk.cs" />
     <Compile Include="Mnemonic.cs" />
-    <Compile Include="UbplMnemonic.cs" />
     <Compile Include="ModRm.cs" />
     <Compile Include="OperandMode.cs" />
     <Compile Include="OperandType.cs" />

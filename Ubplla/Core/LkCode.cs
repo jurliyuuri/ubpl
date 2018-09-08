@@ -16,7 +16,7 @@ namespace Ubplla.Core
         /// <summary>
         /// ニーモニック
         /// </summary>
-        public Mnemonic Mnemonic { get; set; }
+        public Mnemonic2003lk Mnemonic { get; set; }
         
         /// <summary>
         /// 最初の値

@@ -47,7 +47,7 @@ namespace Ubplla.Core
                 case 1:
                     codeList.Insert(0, new LkCode
                     {
-                        Mnemonic = Mnemonic.KRZ,
+                        Mnemonic = Mnemonic2003lk.KRZ,
                         Head = ToOperand(FASAL_LABEL, false),
                         Tail = XX,
                     });
@@ -153,6 +153,11 @@ namespace Ubplla.Core
                     {
                         buffer.Append(c);
                     }
+                }
+
+                if(buffer.Length > 0)
+                {
+                    wordList.Add(buffer.ToString());
                 }
             }
 
@@ -301,7 +306,7 @@ namespace Ubplla.Core
 
                             codeList.Add(new LkCode
                             {
-                                Mnemonic = (Mnemonic)Enum.Parse(typeof(Mnemonic), str, true),
+                                Mnemonic = (Mnemonic2003lk)Enum.Parse(typeof(Mnemonic2003lk), str, true),
                                 Head = Convert(head, fileCount),
                                 Tail = Convert(tail, fileCount),
                             });
@@ -323,7 +328,7 @@ namespace Ubplla.Core
 
                             codeList.Add(new LkCode
                             {
-                                Mnemonic = (Mnemonic)Enum.Parse(typeof(Mnemonic), str, true),
+                                Mnemonic = (Mnemonic2003lk)Enum.Parse(typeof(Mnemonic2003lk), str, true),
                                 Head = Convert(head, fileCount),
                                 Middle = Convert(middle, fileCount),
                                 Tail = Convert(tail, fileCount),
@@ -334,7 +339,7 @@ namespace Ubplla.Core
                         case "nac":
                             codeList.Add(new LkCode
                             {
-                                Mnemonic = Mnemonic.DAL,
+                                Mnemonic = Mnemonic2003lk.DAL,
                                 Head = ToOperand(0),
                                 Tail = Convert(wordList[++i], fileCount),
                             });
@@ -342,7 +347,7 @@ namespace Ubplla.Core
                         case "fi":
                             head = wordList[++i];
                             tail = wordList[++i];
-                            bool isCompare = Enum.TryParse(wordList[++i].ToUpper(), out Mnemonic mne);
+                            bool isCompare = Enum.TryParse(wordList[++i].ToUpper(), out Mnemonic2003lk mne);
 
                             codeList.Add(new LkCode
                             {
@@ -368,7 +373,7 @@ namespace Ubplla.Core
 
                             codeList.Add(new LkCode
                             {
-                                Mnemonic = Mnemonic.INJ,
+                                Mnemonic = Mnemonic2003lk.INJ,
                                 Head = Convert(head, fileCount),
                                 Middle = Convert(middle, fileCount),
                                 Tail = Convert(tail, fileCount),
@@ -555,73 +560,73 @@ namespace Ubplla.Core
                 {
                     switch (code.Mnemonic)
                     {
-                        case Mnemonic.ATA:
+                        case Mnemonic2003lk.ATA:
                             Ata(code.Head, code.Tail);
                             break;
-                        case Mnemonic.NTA:
+                        case Mnemonic2003lk.NTA:
                             Nta(code.Head, code.Tail);
                             break;
-                        case Mnemonic.ADA:
+                        case Mnemonic2003lk.ADA:
                             Ada(code.Head, code.Tail);
                             break;
-                        case Mnemonic.EKC:
+                        case Mnemonic2003lk.EKC:
                             Ekc(code.Head, code.Tail);
                             break;
-                        case Mnemonic.DTO:
+                        case Mnemonic2003lk.DTO:
                             Dto(code.Head, code.Tail);
                             break;
-                        case Mnemonic.DRO:
+                        case Mnemonic2003lk.DRO:
                             Dro(code.Head, code.Tail);
                             break;
-                        case Mnemonic.DTOSNA:
+                        case Mnemonic2003lk.DTOSNA:
                             Dtosna(code.Head, code.Tail);
                             break;
-                        case Mnemonic.DAL:
+                        case Mnemonic2003lk.DAL:
                             Dal(code.Head, code.Tail);
                             break;
-                        case Mnemonic.KRZ:
+                        case Mnemonic2003lk.KRZ:
                             Krz(code.Head, code.Tail);
                             break;
-                        case Mnemonic.MALKRZ:
+                        case Mnemonic2003lk.MALKRZ:
                             Malkrz(code.Head, code.Tail);
                             break;
-                        case Mnemonic.LLONYS:
+                        case Mnemonic2003lk.LLONYS:
                             Fi(code.Head, code.Tail, LLONYS);
                             break;
-                        case Mnemonic.XTLONYS:
+                        case Mnemonic2003lk.XTLONYS:
                             Fi(code.Head, code.Tail, XTLONYS);
                             break;
-                        case Mnemonic.XOLONYS:
+                        case Mnemonic2003lk.XOLONYS:
                             Fi(code.Head, code.Tail, XOLONYS);
                             break;
-                        case Mnemonic.XYLONYS:
+                        case Mnemonic2003lk.XYLONYS:
                             Fi(code.Head, code.Tail, XYLONYS);
                             break;
-                        case Mnemonic.CLO:
+                        case Mnemonic2003lk.CLO:
                             Fi(code.Head, code.Tail, CLO);
                             break;
-                        case Mnemonic.NIV:
+                        case Mnemonic2003lk.NIV:
                             Fi(code.Head, code.Tail, NIV);
                             break;
-                        case Mnemonic.LLO:
+                        case Mnemonic2003lk.LLO:
                             Fi(code.Head, code.Tail, LLO);
                             break;
-                        case Mnemonic.XTLO:
+                        case Mnemonic2003lk.XTLO:
                             Fi(code.Head, code.Tail, XTLO);
                             break;
-                        case Mnemonic.XOLO:
+                        case Mnemonic2003lk.XOLO:
                             Fi(code.Head, code.Tail, XOLO);
                             break;
-                        case Mnemonic.XYLO:
+                        case Mnemonic2003lk.XYLO:
                             Fi(code.Head, code.Tail, XYLO);
                             break;
-                        case Mnemonic.INJ:
+                        case Mnemonic2003lk.INJ:
                             Inj(code.Head, code.Middle, code.Tail);
                             break;
-                        case Mnemonic.LAT:
+                        case Mnemonic2003lk.LAT:
                             Lat(code.Head, code.Middle, code.Tail);
                             break;
-                        case Mnemonic.LATSNA:
+                        case Mnemonic2003lk.LATSNA:
                             Latsna(code.Head, code.Middle, code.Tail);
                             break;
                         default:

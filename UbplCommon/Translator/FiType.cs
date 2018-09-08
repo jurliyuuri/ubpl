@@ -4,9 +4,9 @@ namespace UbplCommon.Translator
 {
     public class FiType
     {
-        internal UbplMnemonic mne;
+        internal Mnemonic mne;
 
-        internal FiType(UbplMnemonic mne)
+        internal FiType(Mnemonic mne)
         {
             this.mne = mne;
         }

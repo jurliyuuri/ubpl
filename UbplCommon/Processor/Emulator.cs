@@ -149,147 +149,172 @@ namespace UbplCommon.Processor
         /// </summary>
         public void Run()
         {
-            while (this.registers[Register.XX] != DEFAULT_RETURN_ADDRESS)
+            try
             {
-                if (this.registers[Register.XX] == TVARLON_KNLOAN_ADDRESS)
+                while (this.registers[Register.XX] != DEFAULT_RETURN_ADDRESS)
                 {
-                    debugBuffer.Add(this.memory[this.registers[Register.F5] + 4].ToString());
-                    this.registers[Register.XX] = this.memory[this.registers[Register.F5]];
-
-                    continue;
-                }
-
-                uint code = this.memory[this.registers[Register.XX]];
-                //Console.WriteLine("nx = {0:X08}, code = {1:X08}", this.registers[Register.XX], code);
-                
-                this.registers[Register.XX] += 4;
-
-                ModRm modrm = new ModRm(this.memory[this.registers[Register.XX]]);
-                this.registers[Register.XX] += 4;
-
-                uint first = this.memory[this.registers[Register.XX]];
-                this.registers[Register.XX] += 4;
-
-                uint second = this.memory[this.registers[Register.XX]];
-                this.registers[Register.XX] += 4;
-
-                #region コード分岐
-                switch (code)
-                {
-                    case 0x00000000:
-                        Ata(modrm, first, second);
-                        break;
-                    case 0x00000001:
-                        Nta(modrm, first, second);
-                        break;
-                    case 0x00000002:
-                        Ada(modrm, first, second);
-                        break;
-                    case 0x00000003:
-                        Ekc(modrm, first, second);
-                        break;
-                    case 0x00000004:
-                        Dto(modrm, first, second);
-                        break;
-                    case 0x00000005:
-                        Dro(modrm, first, second);
-                        break;
-                    case 0x00000006:
-                        Dtosna(modrm, first, second);
-                        break;
-                    case 0x00000007:
-                        Dal(modrm, first, second);
-                        break;
-                    case 0x00000008:
-                        Krz(modrm, first, second);
-                        break;
-                    case 0x00000009:
-                        Malkrz(modrm, first, second);
-                        break;
-                    case 0x00000010:
-                        Llonys(modrm, first, second);
-                        break;
-                    case 0x00000011:
-                        Xtlonys(modrm, first, second);
-                        break;
-                    case 0x00000012:
-                        Xolonys(modrm, first, second);
-                        break;
-                    case 0x00000013:
-                        Xylonys(modrm, first, second);
-                        break;
-                    case 0x00000016:
-                        Clo(modrm, first, second);
-                        break;
-                    case 0x00000017:
-                        Niv(modrm, first, second);
-                        break;
-                    case 0x00000018:
-                        Llo(modrm, first, second);
-                        break;
-                    case 0x00000019:
-                        Xtlo(modrm, first, second);
-                        break;
-                    case 0x0000001A:
-                        Xolo(modrm, first, second);
-                        break;
-                    case 0x0000001B:
-                        Xylo(modrm, first, second);
-                        break;
-                    case 0x00000020:
-                        Fnx(modrm, first, second);
-                        break;
-                    case 0x00000021:
-                        Ach(modrm, first, second);
-                        break;
-                    case 0x00000022:
-                        Mte(modrm, first, second);
-                        break;
-                    case 0x00000028:
-                        Lat(modrm, first, second);
-                        break;
-                    case 0x00000029:
-                        Latsna(modrm, first, second);
-                        break;
-                    case 0x0000002A:
-                        Anf(modrm, first, second);
-                        break;
-                    case 0x0000002B:
-                        Kak(modrm, first, second);
-                        break;
-                    case 0x0000002C:
-                        Kaksna(modrm, first, second);
-                        break;
-                    case 0x0000002D:
-                        Kakkrz(modrm, first, second);
-                        break;
-                    default:
-                        throw new NotImplementedException($"Not Implemented: {code:X}");
-                }
-
-                #endregion
-            }
-
-            if (ViewRegister)
-            {
-                for (int i = 0; i < this.registers.Count; i++)
-                {
-                    if (this.registers.ContainsKey((Register)i))
+                    if (this.registers[Register.XX] == TVARLON_KNLOAN_ADDRESS)
                     {
-                        Console.WriteLine("{0} = {1:X08}", (Register)i, this.registers[(Register)i]);
+                        debugBuffer.Add(this.memory[this.registers[Register.F5] + 4].ToString());
+                        this.registers[Register.XX] = this.memory[this.registers[Register.F5]];
+
+                        continue;
+                    }
+
+                    uint code = this.memory[this.registers[Register.XX]];
+                    //Console.WriteLine("nx = {0:X08}, code = {1:X08}", this.registers[Register.XX], code);
+
+                    this.registers[Register.XX] += 4;
+
+                    ModRm modrm = new ModRm(this.memory[this.registers[Register.XX]]);
+                    this.registers[Register.XX] += 4;
+
+                    uint first = this.memory[this.registers[Register.XX]];
+                    this.registers[Register.XX] += 4;
+
+                    uint second = this.memory[this.registers[Register.XX]];
+                    this.registers[Register.XX] += 4;
+
+                    #region コード分岐
+                    switch (code)
+                    {
+                        case 0x00000000:
+                            Ata(modrm, first, second);
+                            break;
+                        case 0x00000001:
+                            Nta(modrm, first, second);
+                            break;
+                        case 0x00000002:
+                            Ada(modrm, first, second);
+                            break;
+                        case 0x00000003:
+                            Ekc(modrm, first, second);
+                            break;
+                        case 0x00000004:
+                            Dto(modrm, first, second);
+                            break;
+                        case 0x00000005:
+                            Dro(modrm, first, second);
+                            break;
+                        case 0x00000006:
+                            Dtosna(modrm, first, second);
+                            break;
+                        case 0x00000007:
+                            Dal(modrm, first, second);
+                            break;
+                        case 0x00000008:
+                            Krz(modrm, first, second);
+                            break;
+                        case 0x00000009:
+                            Malkrz(modrm, first, second);
+                            break;
+                        case 0x00000010:
+                            Llonys(modrm, first, second);
+                            break;
+                        case 0x00000011:
+                            Xtlonys(modrm, first, second);
+                            break;
+                        case 0x00000012:
+                            Xolonys(modrm, first, second);
+                            break;
+                        case 0x00000013:
+                            Xylonys(modrm, first, second);
+                            break;
+                        case 0x00000016:
+                            Clo(modrm, first, second);
+                            break;
+                        case 0x00000017:
+                            Niv(modrm, first, second);
+                            break;
+                        case 0x00000018:
+                            Llo(modrm, first, second);
+                            break;
+                        case 0x00000019:
+                            Xtlo(modrm, first, second);
+                            break;
+                        case 0x0000001A:
+                            Xolo(modrm, first, second);
+                            break;
+                        case 0x0000001B:
+                            Xylo(modrm, first, second);
+                            break;
+                        case 0x00000020:
+                            Fnx(modrm, first, second);
+                            break;
+                        case 0x00000021:
+                            Mte(modrm, first, second);
+                            break;
+                        case 0x00000028:
+                            Lat(modrm, first, second);
+                            break;
+                        case 0x00000029:
+                            Latsna(modrm, first, second);
+                            break;
+                        case 0x0000002A:
+                            Anf(modrm, first, second);
+                            break;
+                        case 0x0000002B:
+                            Kak(modrm, first, second);
+                            break;
+                        case 0x0000002C:
+                            Kaksna(modrm, first, second);
+                            break;
+                        case 0x0000002D:
+                            Kakkrz(modrm, first, second);
+                            break;
+                        default:
+                            throw new NotImplementedException($"Not Implemented: {code:X}");
+                    }
+
+                    #endregion
+                }
+
+                if (ViewRegister)
+                {
+                    for (int i = 0; i < this.registers.Count; i++)
+                    {
+                        if (this.registers.ContainsKey((Register)i))
+                        {
+                            Console.WriteLine("{0} = {1:X08}", (Register)i, this.registers[(Register)i]);
+                        }
                     }
                 }
-            }
 
-            if (ViewMemory)
-            {
-                foreach (var item in this.memory.Binaries.OrderBy(x => x.Key))
+                if (ViewMemory)
                 {
-                    Console.WriteLine("{0:X08}: {1:X08}", item.Key, item.Value);
+                    foreach (var item in this.memory.Binaries.OrderBy(x => x.Key))
+                    {
+                        Console.WriteLine("{0:X08}: {1:X08}", item.Key, item.Value);
+                    }
                 }
-            }
 
-            Console.WriteLine("[{0}]", string.Join(",", this.debugBuffer));
+                Console.WriteLine("[{0}]", string.Join(",", this.debugBuffer));
+            }
+            catch (Exception ex)
+            {
+                if (ViewRegister)
+                {
+                    for (int i = 0; i < this.registers.Count; i++)
+                    {
+                        if (this.registers.ContainsKey((Register)i))
+                        {
+                            Console.WriteLine("{0} = {1:X08}", (Register)i, this.registers[(Register)i]);
+                        }
+                    }
+                }
+
+                if (ViewMemory)
+                {
+                    foreach (var item in this.memory.Binaries.OrderBy(x => x.Key))
+                    {
+                        Console.WriteLine("{0:X08}: {1:X08}", item.Key, item.Value);
+                    }
+                }
+
+                Console.WriteLine("[{0}]", string.Join(",", this.debugBuffer));
+
+                throw new Exception("Emulator error", ex);
+            }
         }
 
         #region ModRm
@@ -633,21 +658,7 @@ namespace UbplCommon.Processor
             this.registers[Register.XX] = head;
             SetValue(modrm.ModeTail, modrm.RegTail, tmp, xx);
         }
-
-        /// <summary>
-        /// achの処理を行います．
-        /// これは"inj op1 op2 op1"の動作と等しくなります．
-        /// </summary>
-        void Ach(ModRm modrm, uint head, uint tail)
-        {
-            uint originHead = head;
-            uint originTail = tail;
-            (head, tail) = GetValue(modrm, head, tail);
-
-            SetValue(modrm.ModeHead, modrm.RegHead, originHead, tail);
-            SetValue(modrm.ModeTail, modrm.RegTail, originTail, head);
-        }
-
+        
         /// <summary>
         /// mteの処理を行います．
         /// krz64 a &lt;&lt; 32 | b tmp と等しくなります．

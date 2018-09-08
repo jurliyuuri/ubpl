@@ -11,7 +11,7 @@ namespace UbplCommon.Translator
     /// </summary>
     class Code
     {
-        public UbplMnemonic Mnemonic { get; set; }
+        public Mnemonic Mnemonic { get; set; }
         public ModRm Modrm { get; set; }
         public Operand Head { get; set; }
         public Operand Tail { get; set; }
