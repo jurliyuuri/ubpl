@@ -478,6 +478,140 @@ namespace UbplCommon.Translator
         }
 
         /// <summary>
+        /// krz8iを表すメソッドです．
+        /// </summary>
+        /// <param name="val">即値</param>
+        /// <param name="opd">オペランド</param>
+        protected void Krz8i(uint val, Operand opd)
+        {
+            Krz8i(new Operand(val), opd);
+        }
+
+        /// <summary>
+        /// krz8iを表すメソッドです．
+        /// </summary>
+        /// <param name="name">ジャンプラベル</param>
+        /// <param name="opd">オペランド</param>
+        protected void Krz8i(string name, Operand opd)
+        {
+            Krz8i(new Operand(name, true), opd);
+        }
+
+        /// <summary>
+        /// krz8iを表すメソッドです．
+        /// </summary>
+        /// <param name="opd1">オペランド</param>
+        /// <param name="opd2">オペランド</param>
+        protected void Krz8i(Operand opd1, Operand opd2)
+        {
+            if (CheckOperand(opd2))
+            {
+                throw new ArgumentException($"Invalid Operand: {opd2} count:{this.codeList.Count}");
+            }
+            Append(Mnemonic.KRZ8I, opd1, opd2);
+        }
+
+        /// <summary>
+        /// krz16iを表すメソッドです．
+        /// </summary>
+        /// <param name="val">即値</param>
+        /// <param name="opd">オペランド</param>
+        protected void Krz16i(uint val, Operand opd)
+        {
+            Krz16i(new Operand(val), opd);
+        }
+
+        /// <summary>
+        /// krz16iを表すメソッドです．
+        /// </summary>
+        /// <param name="name">ジャンプラベル</param>
+        /// <param name="opd">オペランド</param>
+        protected void Krz16i(string name, Operand opd)
+        {
+            Krz16i(new Operand(name, true), opd);
+        }
+
+        /// <summary>
+        /// krz16iを表すメソッドです．
+        /// </summary>
+        /// <param name="opd1">オペランド</param>
+        /// <param name="opd2">オペランド</param>
+        protected void Krz16i(Operand opd1, Operand opd2)
+        {
+            if (CheckOperand(opd2))
+            {
+                throw new ArgumentException($"Invalid Operand: {opd2} count:{this.codeList.Count}");
+            }
+            Append(Mnemonic.KRZ16I, opd1, opd2);
+        }
+        /// <summary>
+        /// krz8cを表すメソッドです．
+        /// </summary>
+        /// <param name="val">即値</param>
+        /// <param name="opd">オペランド</param>
+        protected void Krz8c(uint val, Operand opd)
+        {
+            Krz8c(new Operand(val), opd);
+        }
+
+        /// <summary>
+        /// krz8cを表すメソッドです．
+        /// </summary>
+        /// <param name="name">ジャンプラベル</param>
+        /// <param name="opd">オペランド</param>
+        protected void Krz8c(string name, Operand opd)
+        {
+            Krz8c(new Operand(name, true), opd);
+        }
+
+        /// <summary>
+        /// krz8cを表すメソッドです．
+        /// </summary>
+        /// <param name="opd1">オペランド</param>
+        /// <param name="opd2">オペランド</param>
+        protected void Krz8c(Operand opd1, Operand opd2)
+        {
+            if (CheckOperand(opd2))
+            {
+                throw new ArgumentException($"Invalid Operand: {opd2} count:{this.codeList.Count}");
+            }
+            Append(Mnemonic.KRZ8C, opd1, opd2);
+        }
+
+        /// <summary>
+        /// krz16cを表すメソッドです．
+        /// </summary>
+        /// <param name="val">即値</param>
+        /// <param name="opd">オペランド</param>
+        protected void Krz16c(uint val, Operand opd)
+        {
+            Krz16c(new Operand(val), opd);
+        }
+
+        /// <summary>
+        /// krz16cを表すメソッドです．
+        /// </summary>
+        /// <param name="name">ジャンプラベル</param>
+        /// <param name="opd">オペランド</param>
+        protected void Krz16c(string name, Operand opd)
+        {
+            Krz16c(new Operand(name, true), opd);
+        }
+
+        /// <summary>
+        /// krz16cを表すメソッドです．
+        /// </summary>
+        /// <param name="opd1">オペランド</param>
+        /// <param name="opd2">オペランド</param>
+        protected void Krz16c(Operand opd1, Operand opd2)
+        {
+            if (CheckOperand(opd2))
+            {
+                throw new ArgumentException($"Invalid Operand: {opd2} count:{this.codeList.Count}");
+            }
+            Append(Mnemonic.KRZ16C, opd1, opd2);
+        }
+        /// <summary>
         /// fi系を表すメソッドです．
         /// </summary>
         /// <param name="val">即値</param>

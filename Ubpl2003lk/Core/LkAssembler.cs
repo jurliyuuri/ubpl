@@ -48,7 +48,7 @@ namespace Ubpl2003lk.Core
                 case 1:
                     codeList.Insert(0, new LkCode
                     {
-                        Mnemonic = Mnemonic.KRZ,
+                        Mnemonic = LkMnemonic.KRZ,
                         Head = ToOperand(FASAL_LABEL, false),
                         Tail = XX,
                     });
@@ -250,6 +250,14 @@ namespace Ubpl2003lk.Core
                     case "dRo":
                     case "malkrz":
                     case "malkRz":
+                    case "krz8i":
+                    case "kRz8i":
+                    case "krz16i":
+                    case "kRz16i":
+                    case "krz8c":
+                    case "kRz8c":
+                    case "krz16c":
+                    case "kRz16c":
                         i += 2;
                         break;
                     case "nac":
@@ -345,11 +353,19 @@ namespace Ubpl2003lk.Core
                         case "dRo":
                         case "malkrz":
                         case "malkRz":
+                        case "krz8i":
+                        case "kRz8i":
+                        case "krz16i":
+                        case "kRz16i":
+                        case "krz8c":
+                        case "kRz8c":
+                        case "krz16c":
+                        case "kRz16c":
                             (head, tail, i) = GetParam(wordList, isCI, i);
 
                             codeList.Add(new LkCode
                             {
-                                Mnemonic = (Mnemonic)Enum.Parse(typeof(Mnemonic), str, true),
+                                Mnemonic = (LkMnemonic)Enum.Parse(typeof(LkMnemonic), str, true),
                                 Head = Convert(head, fileCount),
                                 Tail = Convert(tail, fileCount),
                             });
@@ -371,7 +387,7 @@ namespace Ubpl2003lk.Core
 
                             codeList.Add(new LkCode
                             {
-                                Mnemonic = (Mnemonic)Enum.Parse(typeof(Mnemonic), str, true),
+                                Mnemonic = (LkMnemonic)Enum.Parse(typeof(LkMnemonic), str, true),
                                 Head = Convert(head, fileCount),
                                 Middle = Convert(middle, fileCount),
                                 Tail = Convert(tail, fileCount),
@@ -382,7 +398,7 @@ namespace Ubpl2003lk.Core
                         case "nac":
                             codeList.Add(new LkCode
                             {
-                                Mnemonic = Mnemonic.DAL,
+                                Mnemonic = LkMnemonic.DAL,
                                 Head = ToRegisterOperand(0),
                                 Tail = Convert(wordList[++i], fileCount),
                             });
@@ -390,7 +406,7 @@ namespace Ubpl2003lk.Core
                         case "fi":
                             head = wordList[++i];
                             tail = wordList[++i];
-                            bool isCompare = Enum.TryParse(wordList[++i].ToUpper(), out Mnemonic mne);
+                            bool isCompare = Enum.TryParse(wordList[++i].ToUpper(), out LkMnemonic mne);
 
                             codeList.Add(new LkCode
                             {
@@ -416,7 +432,7 @@ namespace Ubpl2003lk.Core
 
                             codeList.Add(new LkCode
                             {
-                                Mnemonic = Mnemonic.INJ,
+                                Mnemonic = LkMnemonic.INJ,
                                 Head = Convert(head, fileCount),
                                 Middle = Convert(middle, fileCount),
                                 Tail = Convert(tail, fileCount),
@@ -578,98 +594,98 @@ namespace Ubpl2003lk.Core
                 {
                     switch (code.Mnemonic)
                     {
-                        case Mnemonic.ATA:
+                        case LkMnemonic.ATA:
                             Ata(code.Head, code.Tail);
                             break;
-                        case Mnemonic.NTA:
+                        case LkMnemonic.NTA:
                             Nta(code.Head, code.Tail);
                             break;
-                        case Mnemonic.ADA:
+                        case LkMnemonic.ADA:
                             Ada(code.Head, code.Tail);
                             break;
-                        case Mnemonic.EKC:
+                        case LkMnemonic.EKC:
                             Ekc(code.Head, code.Tail);
                             break;
-                        case Mnemonic.DTO:
+                        case LkMnemonic.DTO:
                             Dto(code.Head, code.Tail);
                             break;
-                        case Mnemonic.DRO:
+                        case LkMnemonic.DRO:
                             Dro(code.Head, code.Tail);
                             break;
-                        case Mnemonic.DTOSNA:
+                        case LkMnemonic.DTOSNA:
                             Dtosna(code.Head, code.Tail);
                             break;
-                        case Mnemonic.DAL:
+                        case LkMnemonic.DAL:
                             Dal(code.Head, code.Tail);
                             break;
-                        case Mnemonic.KRZ:
+                        case LkMnemonic.KRZ:
                             Krz(code.Head, code.Tail);
                             break;
-                        case Mnemonic.MALKRZ:
+                        case LkMnemonic.MALKRZ:
                             Malkrz(code.Head, code.Tail);
                             break;
-                        case Mnemonic.LLONYS:
+                        case LkMnemonic.KRZ8I:
+                            Krz8i(code.Head, code.Tail);
+                            break;
+                        case LkMnemonic.KRZ16I:
+                            Krz16i(code.Head, code.Tail);
+                            break;
+                        case LkMnemonic.KRZ8C:
+                            Krz8c(code.Head, code.Tail);
+                            break;
+                        case LkMnemonic.KRZ16C:
+                            Krz16c(code.Head, code.Tail);
+                            break;
+                        case LkMnemonic.LLONYS:
                             Fi(code.Head, code.Tail, LLONYS);
                             break;
-                        case Mnemonic.XTLONYS:
+                        case LkMnemonic.XTLONYS:
                             Fi(code.Head, code.Tail, XTLONYS);
                             break;
-                        case Mnemonic.XOLONYS:
+                        case LkMnemonic.XOLONYS:
                             Fi(code.Head, code.Tail, XOLONYS);
                             break;
-                        case Mnemonic.XYLONYS:
+                        case LkMnemonic.XYLONYS:
                             Fi(code.Head, code.Tail, XYLONYS);
                             break;
-                        case Mnemonic.CLO:
+                        case LkMnemonic.CLO:
                             Fi(code.Head, code.Tail, CLO);
                             break;
-                        case Mnemonic.NIV:
+                        case LkMnemonic.NIV:
                             Fi(code.Head, code.Tail, NIV);
                             break;
-                        case Mnemonic.LLO:
+                        case LkMnemonic.LLO:
                             Fi(code.Head, code.Tail, LLO);
                             break;
-                        case Mnemonic.XTLO:
+                        case LkMnemonic.XTLO:
                             Fi(code.Head, code.Tail, XTLO);
                             break;
-                        case Mnemonic.XOLO:
+                        case LkMnemonic.XOLO:
                             Fi(code.Head, code.Tail, XOLO);
                             break;
-                        case Mnemonic.XYLO:
+                        case LkMnemonic.XYLO:
                             Fi(code.Head, code.Tail, XYLO);
                             break;
-                        case Mnemonic.INJ:
+                        case LkMnemonic.INJ:
                             if(code.Middle.IsReg && !code.Middle.IsAddress && code.Middle.Reg == Register.XX)
                             {
                                 Fnx(code.Head, code.Tail);
                             }
-                            else if (code.Middle.IsAddress
-                                && (code.Middle.Reg == Register.XX || code.Middle.SecondReg == Register.XX))
+                            else if((code.Head.IsAddress && (code.Head.Reg == Register.XX || code.Head.SecondReg == Register.XX))
+                                || (code.Middle.IsAddress && (code.Middle.Reg == Register.XX || code.Middle.SecondReg == Register.XX)))
                             {
-                                Operand first;
+                                Operand first = ToSetiXX(code.Head);
                                 Operand second = ToSetiXX(code.Middle);
-                                if (code.Head.IsAddress)
-                                {
-                                    first = ToSetiXX(code.Head);
-                                }
-                                else if (code.Head.Reg == Register.XX)
-                                {
-                                    first = UL;
-                                }
-                                else
-                                {
-                                    first = code.Head;
-                                }
 
                                 Krz(XX + 32, UL);
                                 Mte(first, second);
-                                if(second.Reg == Register.UL)
+                                if(second.IsAddress && second.Reg == Register.UL)
                                 {
-                                    Anf(second, code.Tail);
+                                    Anf(code.Tail, second);
                                 }
                                 else
                                 {
-                                    Anf(code.Middle, code.Tail);
+                                    Anf(code.Tail, code.Middle);
                                 }
                             }
                             else
@@ -678,14 +694,14 @@ namespace Ubpl2003lk.Core
                                 Operand second = ToXX(code.Middle);
 
                                 Mte(first, second);
-                                Anf(code.Middle, code.Tail);
+                                Anf(code.Tail, code.Middle);
                             }
                             break;
-                        case Mnemonic.LAT:
+                        case LkMnemonic.LAT:
                             Lat(code.Head, code.Middle);
                             Anf(code.Middle, code.Tail);
                             break;
-                        case Mnemonic.LATSNA:
+                        case LkMnemonic.LATSNA:
                             Latsna(code.Head, code.Middle);
                             Anf(code.Middle, code.Tail);
                             break;
@@ -721,7 +737,11 @@ namespace Ubpl2003lk.Core
             {
                 if (operand.Reg == Register.XX)
                 {
-                    if (operand.HasSecondReg)
+                    if (operand.SecondReg == Register.XX)
+                    {
+                        return Seti(UL + UL);
+                    }
+                    else if (operand.HasSecondReg)
                     {
                         return Seti(UL + ToRegisterOperand(operand.SecondReg.Value));
                     }

@@ -208,6 +208,18 @@ namespace UbplCommon.Processor
                         case Mnemonic.MALKRZ:
                             Malkrz(modrm, first, second);
                             break;
+                        case Mnemonic.KRZ8I:
+                            Krz8i(modrm, first, second);
+                            break;
+                        case Mnemonic.KRZ16I:
+                            Krz16i(modrm, first, second);
+                            break;
+                        case Mnemonic.KRZ8C:
+                            Krz8c(modrm, first, second);
+                            break;
+                        case Mnemonic.KRZ16C:
+                            Krz16c(modrm, first, second);
+                            break;
                         case Mnemonic.LLONYS:
                             Llonys(modrm, first, second);
                             break;
@@ -260,7 +272,7 @@ namespace UbplCommon.Processor
                             Kaksna(modrm, first, second);
                             break;
                         default:
-                            throw new NotImplementedException($"Not Implemented: {code:X}");
+                            throw new NotImplementedException($"Not Implemented: {code:X}, nx = {(this.registers[Register.XX] - 16):X08}");
                     }
 
                     #endregion
@@ -315,50 +327,185 @@ namespace UbplCommon.Processor
         }
 
         #region ModRm
-
-        (uint, uint) GetValue(ModRm modrm, uint first, uint second)
+        
+        byte GetValue8(OperandMode mode, Register register, uint value)
         {
-            return (Get(modrm.ModeHead, modrm.RegHead, first), Get(modrm.ModeTail, modrm.RegTail, second));
+            byte result = 0;
 
-            uint Get(OperandMode mode, Register register, uint value)
+            switch (mode)
             {
-                uint result = 0;
-
-                switch (mode)
-                {
-                    case OperandMode.REG32:
-                        result = this.registers[register];
-                        break;
-                    case OperandMode.IMM32:
-                        result = value;
-                        break;
-                    case OperandMode.REG32_REG32:
-                        result = this.registers[register] + this.registers[(Register)value];
-                        break;
-                    case OperandMode.REG32_IMM32:
-                        result = this.registers[register] + value;
-                        break;
-                    case OperandMode.ADDR_REG32:
-                        result = this.memory[this.registers[register]];
-                        break;
-                    case OperandMode.ADDR_IMM32:
-                        result = this.memory[value];
-                        break;
-                    case OperandMode.ADDR_REG32_REG32:
-                        result = this.memory[this.registers[register] + this.registers[(Register)value]];
-                        break;
-                    case OperandMode.ADDR_REG32_IMM32:
-                        result = this.memory[this.registers[register] + value];
-                        break;
-                    default:
-                        break;
-                }
-
-                return result;
+                case OperandMode.REG32:
+                    result = (byte)(this.registers[register] >> 24);
+                    break;
+                case OperandMode.IMM32:
+                    result = (byte)(value >> 24);
+                    break;
+                case OperandMode.REG32_REG32:
+                    result = (byte)((this.registers[register] + this.registers[(Register)value]) >> 24);
+                    break;
+                case OperandMode.REG32_IMM32:
+                    result = (byte)((this.registers[register] + value) >> 24);
+                    break;
+                case OperandMode.ADDR_REG32:
+                    result = this.memory.GetValue8(this.registers[register]);
+                    break;
+                case OperandMode.ADDR_IMM32:
+                    result = this.memory.GetValue8(value);
+                    break;
+                case OperandMode.ADDR_REG32_REG32:
+                    result = this.memory.GetValue8(this.registers[register] + this.registers[(Register)value]);
+                    break;
+                case OperandMode.ADDR_REG32_IMM32:
+                    result = this.memory.GetValue8(this.registers[register] + value);
+                    break;
+                default:
+                    break;
             }
+
+            return result;
         }
 
-        void SetValue(OperandMode mode, Register register, uint tail, uint value)
+        ushort GetValue16(OperandMode mode, Register register, uint value)
+        {
+            ushort result = 0;
+
+            switch (mode)
+            {
+                case OperandMode.REG32:
+                    result = (ushort)(this.registers[register] >> 16);
+                    break;
+                case OperandMode.IMM32:
+                    result = (ushort)(value >> 16);
+                    break;
+                case OperandMode.REG32_REG32:
+                    result = (ushort)((this.registers[register] + this.registers[(Register)value]) >> 16);
+                    break;
+                case OperandMode.REG32_IMM32:
+                    result = (ushort)((this.registers[register] + value) >> 16);
+                    break;
+                case OperandMode.ADDR_REG32:
+                    result = this.memory.GetValue16(this.registers[register]);
+                    break;
+                case OperandMode.ADDR_IMM32:
+                    result = this.memory.GetValue16(value);
+                    break;
+                case OperandMode.ADDR_REG32_REG32:
+                    result = this.memory.GetValue16(this.registers[register] + this.registers[(Register)value]);
+                    break;
+                case OperandMode.ADDR_REG32_IMM32:
+                    result = this.memory.GetValue16(this.registers[register] + value);
+                    break;
+                default:
+                    break;
+            }
+
+            return result;
+        }
+
+        uint GetValue32(OperandMode mode, Register register, uint value)
+        {
+            uint result = 0;
+
+            switch (mode)
+            {
+                case OperandMode.REG32:
+                    result = this.registers[register];
+                    break;
+                case OperandMode.IMM32:
+                    result = value;
+                    break;
+                case OperandMode.REG32_REG32:
+                    result = this.registers[register] + this.registers[(Register)value];
+                    break;
+                case OperandMode.REG32_IMM32:
+                    result = this.registers[register] + value;
+                    break;
+                case OperandMode.ADDR_REG32:
+                    result = this.memory.GetValue32(this.registers[register]);
+                    break;
+                case OperandMode.ADDR_IMM32:
+                    result = this.memory.GetValue32(value);
+                    break;
+                case OperandMode.ADDR_REG32_REG32:
+                    result = this.memory.GetValue32(this.registers[register] + this.registers[(Register)value]);
+                    break;
+                case OperandMode.ADDR_REG32_IMM32:
+                    result = this.memory.GetValue32(this.registers[register] + value);
+                    break;
+                default:
+                    break;
+            }
+
+            return result;
+        }
+
+        void SetValue8(OperandMode mode, Register register, uint tail, uint value)
+        {
+            switch (mode)
+            {
+                case OperandMode.REG32:
+                    this.registers[register] &= 0x00FFFFFF;
+                    this.registers[register] |= value << 24;
+                    break;
+                case OperandMode.IMM32:
+                    throw new ArgumentException("Operand mode is 'IMM32'");
+                case OperandMode.REG32_REG32:
+                    throw new ArgumentException("Operand mode is 'REG32_REG32'");
+                case OperandMode.REG32_IMM32:
+                    throw new ArgumentException("Operand mode is 'REG32_IMM32'");
+                case OperandMode.ADDR_REG32:
+                    this.memory.SetValue8(this.registers[register], value);
+                    break;
+                case OperandMode.ADDR_IMM32:
+                    this.memory.SetValue8(tail, value);
+                    break;
+                case OperandMode.ADDR_REG32_REG32:
+                    this.memory.SetValue8(this.registers[register] + this.registers[(Register)tail], value);
+                    break;
+                case OperandMode.ADDR_REG32_IMM32:
+                    this.memory.SetValue8(this.registers[register] + tail, value);
+                    break;
+                default:
+                    throw new ArgumentException($"Operand mode is Unknown ({mode})");
+            }
+
+            this.flags = false;
+        }
+
+        void SetValue16(OperandMode mode, Register register, uint tail, uint value)
+        {
+            switch (mode)
+            {
+                case OperandMode.REG32:
+                    this.registers[register] &= 0x0000FFFF;
+                    this.registers[register] |= value << 16;
+                    break;
+                case OperandMode.IMM32:
+                    throw new ArgumentException("Operand mode is 'IMM32'");
+                case OperandMode.REG32_REG32:
+                    throw new ArgumentException("Operand mode is 'REG32_REG32'");
+                case OperandMode.REG32_IMM32:
+                    throw new ArgumentException("Operand mode is 'REG32_IMM32'");
+                case OperandMode.ADDR_REG32:
+                    this.memory.SetValue16(this.registers[register], value);
+                    break;
+                case OperandMode.ADDR_IMM32:
+                    this.memory.SetValue16(tail, value);
+                    break;
+                case OperandMode.ADDR_REG32_REG32:
+                    this.memory.SetValue16(this.registers[register] + this.registers[(Register)tail], value);
+                    break;
+                case OperandMode.ADDR_REG32_IMM32:
+                    this.memory.SetValue16(this.registers[register] + tail, value);
+                    break;
+                default:
+                    throw new ArgumentException($"Operand mode is Unknown ({mode})");
+            }
+
+            this.flags = false;
+        }
+
+        void SetValue32(OperandMode mode, Register register, uint tail, uint value)
         {
             switch (mode)
             {
@@ -372,16 +519,16 @@ namespace UbplCommon.Processor
                 case OperandMode.REG32_IMM32:
                     throw new ArgumentException("Operand mode is 'REG32_IMM32'");
                 case OperandMode.ADDR_REG32:
-                    this.memory[this.registers[register]] = value;
+                    this.memory.SetValue32(this.registers[register], value);
                     break;
                 case OperandMode.ADDR_IMM32:
-                    this.memory[tail] = value;
+                    this.memory.SetValue32(tail, value);
                     break;
                 case OperandMode.ADDR_REG32_REG32:
-                    this.memory[this.registers[register] + this.registers[(Register)tail]] = value;
+                    this.memory.SetValue32(this.registers[register] + this.registers[(Register)tail], value);
                     break;
                 case OperandMode.ADDR_REG32_IMM32:
-                    this.memory[this.registers[register] + tail] = value;
+                    this.memory.SetValue32(this.registers[register] + tail, value);
                     break;
                 default:
                     throw new ArgumentException($"Operand mode is Unknown ({mode})");
@@ -399,10 +546,10 @@ namespace UbplCommon.Processor
         /// </summary>
         void Ata(ModRm modrm, uint head, uint tail)
         {
-            uint tmp = tail;
-            (head, tail) = GetValue(modrm, head, tail);
+            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
+            uint tailValue = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
 
-            SetValue(modrm.ModeTail, modrm.RegTail, tmp, tail + head);
+            SetValue32(modrm.ModeTail, modrm.RegTail, tail, tailValue + headValue);
         }
 
         /// <summary>
@@ -410,10 +557,10 @@ namespace UbplCommon.Processor
         /// </summary>
         void Nta(ModRm modrm, uint head, uint tail)
         {
-            uint tmp = tail;
-            (head, tail) = GetValue(modrm, head, tail);
+            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
+            uint tailValue = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
 
-            SetValue(modrm.ModeTail, modrm.RegTail, tmp, tail - head);
+            SetValue32(modrm.ModeTail, modrm.RegTail, tail, tailValue - headValue);
         }
 
         /// <summary>
@@ -421,10 +568,10 @@ namespace UbplCommon.Processor
         /// </summary>
         void Ada(ModRm modrm, uint head, uint tail)
         {
-            uint tmp = tail;
-            (head, tail) = GetValue(modrm, head, tail);
+            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
+            uint tailValue = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
 
-            SetValue(modrm.ModeTail, modrm.RegTail, tmp, tail & head);
+            SetValue32(modrm.ModeTail, modrm.RegTail, tail, tailValue & headValue);
         }
 
         /// <summary>
@@ -432,10 +579,10 @@ namespace UbplCommon.Processor
         /// </summary>
         void Ekc(ModRm modrm, uint head, uint tail)
         {
-            uint tmp = tail;
-            (head, tail) = GetValue(modrm, head, tail);
+            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
+            uint tailValue = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
 
-            SetValue(modrm.ModeTail, modrm.RegTail, tmp, tail | head);
+            SetValue32(modrm.ModeTail, modrm.RegTail, tail, tailValue | headValue);
         }
 
         /// <summary>
@@ -443,21 +590,20 @@ namespace UbplCommon.Processor
         /// </summary>
         void Dto(ModRm modrm, uint head, uint tail)
         {
-            uint tmp = tail;
-            (head, tail) = GetValue(modrm, head, tail);
-
+            int headValue = (int)GetValue32(modrm.ModeHead, modrm.RegHead, head);
+            uint tailValue = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
             uint value;
-            int iHead = (int)head;
-            if(iHead >= 32)
+            
+            if(headValue >= 32)
             {
                 value = 0;
             }
             else
             {
-                value = tail >> iHead;
+                value = tail >> headValue;
             }
 
-            SetValue(modrm.ModeTail, modrm.RegTail, tmp, value);
+            SetValue32(modrm.ModeTail, modrm.RegTail, tail, value);
         }
 
         /// <summary>
@@ -465,22 +611,20 @@ namespace UbplCommon.Processor
         /// </summary>
         void Dro(ModRm modrm, uint head, uint tail)
         {
-            uint tmp = tail;
-            (head, tail) = GetValue(modrm, head, tail);
-
+            int headValue = (int)GetValue32(modrm.ModeHead, modrm.RegHead, head);
+            uint tailValue = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
             uint value;
-            int iHead = (int)head;
 
-            if (iHead >= 32)
+            if (headValue >= 32)
             {
                 value = 0;
             }
             else
             {
-                value = tail << iHead;
+                value = tail << headValue;
             }
 
-            SetValue(modrm.ModeTail, modrm.RegTail, tmp, value);
+            SetValue32(modrm.ModeTail, modrm.RegTail, tail, value);
         }
 
         /// <summary>
@@ -488,22 +632,20 @@ namespace UbplCommon.Processor
         /// </summary>
         void Dtosna(ModRm modrm, uint head, uint tail)
         {
-            uint tmp = tail;
-            (head, tail) = GetValue(modrm, head, tail);
-
+            int headValue = (int)GetValue32(modrm.ModeHead, modrm.RegHead, head);
+            uint tailValue = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
             uint value;
-            int iHead = (int)head;
 
-            if (iHead >= 32)
+            if (headValue >= 32)
             {
                 value = (uint)((int)tail >> 31);
             }
             else
             {
-                value = (uint)((int)tail >> iHead);
+                value = (uint)((int)tail >> headValue);
             }
 
-            SetValue(modrm.ModeTail, modrm.RegTail, tmp, value);
+            SetValue32(modrm.ModeTail, modrm.RegTail, tail, value);
         }
 
         /// <summary>
@@ -511,10 +653,10 @@ namespace UbplCommon.Processor
         /// </summary>
         void Dal(ModRm modrm, uint head, uint tail)
         {
-            uint tmp = tail;
-            (head, tail) = GetValue(modrm, head, tail);
+            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
+            uint tailValue = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
 
-            SetValue(modrm.ModeTail, modrm.RegTail, tmp, ~(tail ^ head));
+            SetValue32(modrm.ModeTail, modrm.RegTail, tail, ~(tailValue ^ headValue));
         }
 
         /// <summary>
@@ -522,10 +664,9 @@ namespace UbplCommon.Processor
         /// </summary>
         void Krz(ModRm modrm, uint head, uint tail)
         {
-            uint tmp = tail;
-            (head, tail) = GetValue(modrm, head, tail);
+            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
 
-            SetValue(modrm.ModeTail, modrm.RegTail, tmp, head);
+            SetValue32(modrm.ModeTail, modrm.RegTail, tail, headValue);
         }
 
         /// <summary>
@@ -533,13 +674,52 @@ namespace UbplCommon.Processor
         /// </summary>
         void Malkrz(ModRm modrm, uint head, uint tail)
         {
-            uint tmp = tail;
-            (head, tail) = GetValue(modrm, head, tail);
+            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
 
             if(this.flags)
             {
-                SetValue(modrm.ModeTail, modrm.RegTail, tmp, head);
+                SetValue32(modrm.ModeTail, modrm.RegTail, tail, headValue);
             }
+        }
+
+        /// <summary>
+        /// krz8iの処理を行います．
+        /// </summary>
+        void Krz8i(ModRm modrm, uint head, uint tail)
+        {
+            int headValue = GetValue8(modrm.ModeHead, modrm.RegHead, head);
+
+            SetValue32(modrm.ModeTail, modrm.RegTail, tail, (uint)((headValue << 24) >> 24));
+        }
+
+        /// <summary>
+        /// krz16iの処理を行います．
+        /// </summary>
+        void Krz16i(ModRm modrm, uint head, uint tail)
+        {
+            int headValue = GetValue16(modrm.ModeHead, modrm.RegHead, head);
+
+            SetValue32(modrm.ModeTail, modrm.RegTail, tail, (uint)((headValue << 16) >> 16));
+        }
+
+        /// <summary>
+        /// krz8cの処理を行います．
+        /// </summary>
+        void Krz8c(ModRm modrm, uint head, uint tail)
+        {
+            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
+
+            SetValue8(modrm.ModeTail, modrm.RegTail, tail, headValue);
+        }
+
+        /// <summary>
+        /// krz16cの処理を行います．
+        /// </summary>
+        void Krz16c(ModRm modrm, uint head, uint tail)
+        {
+            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
+
+            SetValue16(modrm.ModeTail, modrm.RegTail, tail, headValue);
         }
 
         /// <summary>
@@ -547,9 +727,10 @@ namespace UbplCommon.Processor
         /// </summary>
         void Llonys(ModRm modrm, uint head, uint tail)
         {
-            (head, tail) = GetValue(modrm, head, tail);
-
-            this.flags = head > tail;
+            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
+            uint tailValue = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
+            
+            this.flags = headValue > tailValue;
         }
 
         /// <summary>
@@ -557,9 +738,10 @@ namespace UbplCommon.Processor
         /// </summary>
         void Xtlonys(ModRm modrm, uint head, uint tail)
         {
-            (head, tail) = GetValue(modrm, head, tail);
+            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
+            uint tailValue = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
 
-            this.flags = head <= tail;
+            this.flags = headValue <= tailValue;
         }
 
         /// <summary>
@@ -567,9 +749,10 @@ namespace UbplCommon.Processor
         /// </summary>
         void Xolonys(ModRm modrm, uint head, uint tail)
         {
-            (head, tail) = GetValue(modrm, head, tail);
+            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
+            uint tailValue = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
 
-            this.flags = head >= tail;
+            this.flags = headValue >= tailValue;
         }
 
         /// <summary>
@@ -577,9 +760,10 @@ namespace UbplCommon.Processor
         /// </summary>
         void Xylonys(ModRm modrm, uint head, uint tail)
         {
-            (head, tail) = GetValue(modrm, head, tail);
+            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
+            uint tailValue = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
 
-            this.flags = head < tail;
+            this.flags = headValue < tailValue;
         }
 
         /// <summary>
@@ -587,9 +771,10 @@ namespace UbplCommon.Processor
         /// </summary>
         void Clo(ModRm modrm, uint head, uint tail)
         {
-            (head, tail) = GetValue(modrm, head, tail);
+            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
+            uint tailValue = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
 
-            this.flags = head == tail;
+            this.flags = headValue == tailValue;
         }
 
         /// <summary>
@@ -597,9 +782,10 @@ namespace UbplCommon.Processor
         /// </summary>
         void Niv(ModRm modrm, uint head, uint tail)
         {
-            (head, tail) = GetValue(modrm, head, tail);
+            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
+            uint tailValue = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
 
-            this.flags = head != tail;
+            this.flags = headValue != tailValue;
         }
 
         /// <summary>
@@ -607,9 +793,10 @@ namespace UbplCommon.Processor
         /// </summary>
         void Llo(ModRm modrm, uint head, uint tail)
         {
-            (head, tail) = GetValue(modrm, head, tail);
+            int headValue = (int)GetValue32(modrm.ModeHead, modrm.RegHead, head);
+            int tailValue = (int)GetValue32(modrm.ModeTail, modrm.RegTail, tail);
 
-            this.flags = (int)head > (int)tail;
+            this.flags = headValue > tailValue;
         }
 
         /// <summary>
@@ -617,9 +804,10 @@ namespace UbplCommon.Processor
         /// </summary>
         void Xtlo(ModRm modrm, uint head, uint tail)
         {
-            (head, tail) = GetValue(modrm, head, tail);
+            int headValue = (int)GetValue32(modrm.ModeHead, modrm.RegHead, head);
+            int tailValue = (int)GetValue32(modrm.ModeTail, modrm.RegTail, tail);
 
-            this.flags = (int)head <= (int)tail;
+            this.flags = headValue <= tailValue;
         }
 
         /// <summary>
@@ -627,9 +815,11 @@ namespace UbplCommon.Processor
         /// </summary>
         void Xolo(ModRm modrm, uint head, uint tail)
         {
-            (head, tail) = GetValue(modrm, head, tail);
+            int headValue = (int)GetValue32(modrm.ModeHead, modrm.RegHead, head);
+            int tailValue = (int)GetValue32(modrm.ModeTail, modrm.RegTail, tail);
 
-            this.flags = (int)head >= (int)tail;
+
+            this.flags = headValue >= tailValue;
         }
 
         /// <summary>
@@ -637,9 +827,10 @@ namespace UbplCommon.Processor
         /// </summary>
         void Xylo(ModRm modrm, uint head, uint tail)
         {
-            (head, tail) = GetValue(modrm, head, tail);
+            int headValue = (int)GetValue32(modrm.ModeHead, modrm.RegHead, head);
+            int tailValue = (int)GetValue32(modrm.ModeTail, modrm.RegTail, tail);
 
-            this.flags = (int)head < (int)tail;
+            this.flags = headValue < tailValue;
         }
 
         /// <summary>
@@ -648,47 +839,23 @@ namespace UbplCommon.Processor
         /// </summary>
         void Fnx(ModRm modrm, uint head, uint tail)
         {
-            uint tmp = tail;
             uint xx = this.registers[Register.XX];
-            (head, tail) = GetValue(modrm, head, tail);
+            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
 
-            this.registers[Register.XX] = head;
-            SetValue(modrm.ModeTail, modrm.RegTail, tmp, xx);
+            this.registers[Register.XX] = headValue;
+            SetValue32(modrm.ModeTail, modrm.RegTail, tail, xx);
         }
-        
+
         /// <summary>
         /// mteの処理を行います．
-        /// krz64 tail &lt;&lt; 32 | head tmp と等しくなります．
+        /// krz64 head &lt;&lt; 32 | tail tmp と等しくなります．
         /// </summary>
         void Mte(ModRm modrm, uint head, uint tail)
         {
-            uint originHead = head;
-            uint originTail = tail;
-            (head, tail) = GetValue(modrm, head, tail);
+            ulong headValue = (ulong)GetValue32(modrm.ModeHead, modrm.RegHead, head);
+            uint tailValue = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
 
-            this.temporary = ((ulong)tail << 32) | head;
-        }
-
-        /// <summary>
-        /// latの処理を行います．
-        /// </summary>
-        void Lat(ModRm modrm, uint head, uint tail)
-        {
-            uint tmp = tail;
-            (head, tail) = GetValue(modrm, head, tail);
-
-            this.temporary = (ulong)tail * head;
-        }
-
-        /// <summary>
-        /// latsnaの処理を行います．
-        /// </summary>
-        void Latsna(ModRm modrm, uint head, uint tail)
-        {
-            uint tmp = tail;
-            (head, tail) = GetValue(modrm, head, tail);
-
-            this.temporary = (ulong)((long)tail * head);
+            this.temporary = (headValue << 32) | tailValue;
         }
 
         /// <summary>
@@ -697,8 +864,30 @@ namespace UbplCommon.Processor
         /// </summary>
         void Anf(ModRm modrm, uint head, uint tail)
         {
-            SetValue(modrm.ModeTail, modrm.RegTail, tail, (uint)(this.temporary >> 32));
-            SetValue(modrm.ModeHead, modrm.RegHead, head, (uint)(this.temporary));
+            SetValue32(modrm.ModeTail, modrm.RegTail, tail, (uint)(this.temporary >> 32));
+            SetValue32(modrm.ModeHead, modrm.RegHead, head, (uint)(this.temporary));
+        }
+
+        /// <summary>
+        /// latの処理を行います．
+        /// </summary>
+        void Lat(ModRm modrm, uint head, uint tail)
+        {
+            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
+            ulong tailValue = (ulong)GetValue32(modrm.ModeTail, modrm.RegTail, tail);
+
+            this.temporary = tailValue * headValue;
+        }
+
+        /// <summary>
+        /// latsnaの処理を行います．
+        /// </summary>
+        void Latsna(ModRm modrm, uint head, uint tail)
+        {
+            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
+            long tailValue = (int)GetValue32(modrm.ModeTail, modrm.RegTail, tail);
+
+            this.temporary = (ulong)(tail * head);
         }
 
         /// <summary>

@@ -59,7 +59,7 @@
   <ItemGroup>
     <Compile Include="Core\LkAssembler.cs" />
     <Compile Include="Core\LkCode.cs" />
-    <Compile Include="Core\Mnemonic.cs" />
+    <Compile Include="Core\LkMnemonic.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
