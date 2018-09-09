@@ -716,14 +716,7 @@ namespace Ubpl2003lk.Core
         {
             if (operand.Reg == Register.XX)
             {
-                if (operand.IsRegAndImm)
-                {
-                    return XX + (operand.Disp.Value + 16);
-                }
-                else
-                {
-                    return XX + 16;
-                }
+                return XX + 16;
             }
             else
             {
@@ -758,6 +751,10 @@ namespace Ubpl2003lk.Core
                 {
                     return Seti(UL + ToRegisterOperand(operand.Reg.Value));
                 }
+            }
+            else if (operand.Reg == Register.XX)
+            {
+                return UL;
             }
 
             return operand;
