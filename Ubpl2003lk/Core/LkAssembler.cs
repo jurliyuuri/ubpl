@@ -20,11 +20,13 @@ namespace Ubpl2003lk.Core
 
         IList<string> inFiles;
         IDictionary<string, bool> kuexok;
+        string fasalLabel;
 
         public LkAssembler(List<string> inFiles) : base()
         {
             this.inFiles = inFiles;
             this.kuexok = new Dictionary<string, bool>();
+            this.fasalLabel = FASAL_LABEL;
         }
 
         public void Execute(string outFile)
@@ -49,7 +51,7 @@ namespace Ubpl2003lk.Core
                     codeList.Insert(0, new LkCode
                     {
                         Mnemonic = LkMnemonic.KRZ,
-                        Head = ToOperand(FASAL_LABEL, false),
+                        Head = ToOperand(fasalLabel, false),
                         Tail = XX,
                     });
                     break;
@@ -143,15 +145,7 @@ namespace Ubpl2003lk.Core
                         }
                         else if (wordList.Count > 0)
                         {
-                            string str = wordList[wordList.Count - 1];
-                            if (char.IsDigit(str.Last()))
-                            {
-                                wordList[wordList.Count - 1] = str + c;
-                            }
-                            else
-                            {
-                                throw new ApplicationException("Invalid Pattern '@'");
-                            }
+                            wordList[wordList.Count - 1] += c;
                         }
                         else
                         {
@@ -163,15 +157,8 @@ namespace Ubpl2003lk.Core
                         if (buffer.Length == 0)
                         {
                             string str = wordList[wordList.Count - 1];
-                            if (char.IsDigit(str.Last()))
-                            {
-                                buffer.Append(str);
-                                wordList.RemoveAt(wordList.Count - 1);
-                            }
-                            else
-                            {
-                                throw new ApplicationException("Invalid Pattern '+'");
-                            }
+                            buffer.Append(str);
+                            wordList.RemoveAt(wordList.Count - 1);
                         }
 
                         buffer.Append(c);
@@ -181,16 +168,8 @@ namespace Ubpl2003lk.Core
                         {
                             c = System.Convert.ToChar(reader.Read());
                         }
-
-                        if (char.IsDigit(c) || c == 'f')
-                        {
-                            buffer.Append(c);
-                        }
-                        else
-                        {
-                            throw new ApplicationException("Invalid Pattern '+'");
-                        }
-
+                        
+                        buffer.Append(c);
                     }
                     else
                     {
@@ -340,6 +319,22 @@ namespace Ubpl2003lk.Core
                         case "xok":
                             ++i;
                             break;
+                        case "lifem":
+                            Operand opd = Convert(wordList[++i], fileCount);
+
+                            if (opd.IsImm)
+                            {
+                                codeList.Add(new LkCode
+                                {
+                                    LabelType = "lifem",
+                                    Head = opd,
+                                });
+                            }
+                            else
+                            {
+                                throw new ApplicationException($"Invalid constant value: {opd}");
+                            }
+                            break;
                         case "krz":
                         case "kRz":
                         case "ata":
@@ -444,8 +439,15 @@ namespace Ubpl2003lk.Core
                     }
                 }
             }
-            
-            if (isMain)
+
+            string fasal = codeList.Where(x => x.Label == "fasal" || x.Label == "_fasal" || x.Label == "'fasal")
+                .Select(x => x.Label).SingleOrDefault();
+
+            if (fasal != null)
+            {
+                this.fasalLabel = fasal;
+            }
+            else if (isMain)
             {
                 codeList.Insert(0, new LkCode
                 {
@@ -488,12 +490,11 @@ namespace Ubpl2003lk.Core
             if (add)
             {
                 string[] param = str.Split('+');
-                uint val1, val2;
 
                 bool succReg1 = Enum.IsDefined(typeof(Register), param[0].ToUpper());
                 bool succReg2 = Enum.IsDefined(typeof(Register), param[1].ToUpper());
-                bool succVal1 = uint.TryParse(param[0], out val1);
-                bool succVal2 = uint.TryParse(param[1], out val2);
+                bool succVal1 = uint.TryParse(param[0], out uint val1);
+                bool succVal2 = uint.TryParse(param[1], out uint val2);
                 
                 if (!succReg1 && !succVal1)
                 {
@@ -585,6 +586,9 @@ namespace Ubpl2003lk.Core
                             break;
                         case "l'":
                             L(code.Label);
+                            break;
+                        case "lifem":
+                            Lifem(code.Head.Disp.Value);
                             break;
                         default:
                             throw new ApplicationException($"Unknown Value: {code.LabelType}");
@@ -738,7 +742,7 @@ namespace Ubpl2003lk.Core
                     {
                         return Seti(UL + ToRegisterOperand(operand.SecondReg.Value));
                     }
-                    else if (operand.IsRegAndImm)
+                    else if (operand.IsRegImm)
                     {
                         return Seti(UL + operand.Disp.Value);
                     }

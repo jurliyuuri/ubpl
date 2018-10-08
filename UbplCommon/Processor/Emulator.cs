@@ -9,35 +9,6 @@ namespace UbplCommon.Processor
 {
     public class Emulator
     {
-        #region Constants
-
-        /// <summary>
-        /// レジスタ数
-        /// </summary>
-        private static readonly int REGISTER_COUNT = UbplConstant.REGISTER_COUNT;
-
-        /// <summary>
-        /// 2003fのF5レジスタのデフォルト値
-        /// </summary>
-        private static readonly uint DEFAULT_INITIAL_F5 = UbplConstant.DEFAULT_INITIAL_F5;
-
-        /// <summary>
-        /// 2003fのNXレジスタのデフォルト値
-        /// </summary>
-        private static readonly uint DEFAULT_INITIAL_NX = UbplConstant.DEFAULT_INITIAL_NX;
-
-        /// <summary>
-        /// アプリケーションのリターンアドレス
-        /// </summary>
-        private static readonly uint DEFAULT_RETURN_ADDRESS = UbplConstant.DEFAULT_RETURN_ADDRESS;
-
-        /// <summary>
-        /// デバッグ用出力アドレス
-        /// </summary>
-        private static readonly uint TVARLON_KNLOAN_ADDRESS = UbplConstant.TVARLON_KNLOAN_ADDRESS;
-
-        #endregion
-
         #region Fields
 
         /// <summary>
@@ -58,13 +29,28 @@ namespace UbplCommon.Processor
         /// <summary>
         /// デバッグ用出力バッファ
         /// </summary>
-        List<string> debugBuffer;
+        readonly List<string> debugBuffer;
 
         /// <summary>
         /// Lat系やKak系の値を一時保存するための変数
         /// </summary>
         ulong temporary;
 
+        /// <summary>
+        /// 2003fのF5レジスタのデフォルト値
+        /// </summary>
+        readonly uint initialStackAddress;
+
+        /// <summary>
+        /// 2003fのNXレジスタのデフォルト値
+        /// </summary>
+        readonly uint initialProgramAddress;
+
+        /// <summary>
+        /// アプリケーションのリターンアドレス
+        /// </summary>
+        readonly uint returnAddress;
+        
         #endregion
 
         #region Properties
@@ -92,11 +78,24 @@ namespace UbplCommon.Processor
         /// <summary>
         /// コンストラクタ
         /// </summary>
-        public Emulator()
+        public Emulator() : this(UbplConstant.DEFAULT_INITIAL_F5,
+            UbplConstant.DEFAULT_INITIAL_NX, UbplConstant.DEFAULT_RETURN_ADDRESS) { }
+
+        /// <summary>
+        /// コンストラクタ
+        /// </summary>
+        /// <param name="initialStackAddress">初期スタックアドレス</param>
+        /// <param name="initialProgramAddress">初期プログラムアドレス</param>
+        /// <param name="returnAddress">プログラムのリターンアドレス</param>
+        public Emulator(uint initialStackAddress, uint initialProgramAddress, uint returnAddress)
         {
             this.memory = new Memory();
             this.flags = false;
             this.debugBuffer = new List<string>();
+
+            this.initialStackAddress = initialStackAddress;
+            this.initialProgramAddress = initialProgramAddress;
+            this.returnAddress = returnAddress;
 
             this.registers = new Dictionary<Register, uint>
             {
@@ -105,13 +104,31 @@ namespace UbplCommon.Processor
                 [Register.F2] = 0,
                 [Register.F3] = 0,
                 [Register.F4] = 0,
-                [Register.F5] = DEFAULT_INITIAL_F5,
+                [Register.F5] = this.initialStackAddress,
                 [Register.F6] = 0,
-                [Register.XX] = DEFAULT_INITIAL_NX,
+                [Register.XX] = this.initialProgramAddress,
                 [Register.UL] = 0,
             };
 
-            this.memory[DEFAULT_INITIAL_F5] = DEFAULT_RETURN_ADDRESS;
+            this.memory[this.initialStackAddress] = this.returnAddress;
+        }
+
+        /// <summary>
+        /// バイナリコードを読み込みます．
+        /// </summary>
+        /// <param name="binary">ubplバイナリデータ</param>
+        public void Read(IReadOnlyList<byte> binary)
+        {
+            Read(binary.ToArray());
+        }
+
+        /// <summary>
+        /// バイナリコードを読み込みます．
+        /// </summary>
+        /// <param name="binary">ubplバイナリデータ</param>
+        public void Read(IList<byte> binary)
+        {
+            Read(binary.ToArray());
         }
 
         /// <summary>
@@ -120,12 +137,12 @@ namespace UbplCommon.Processor
         /// <param name="binary">ubplバイナリデータ</param>
         public void Read(byte[] binary)
         {
-            if (DEFAULT_INITIAL_NX + binary.LongLength >= (long)uint.MaxValue)
+            if (initialProgramAddress + binary.LongLength >= (long)uint.MaxValue)
             {
                 throw new ApplicationException("Too Large Programme");
             }
 
-            uint u = DEFAULT_INITIAL_NX;
+            uint u = initialProgramAddress;
             for (int i = 0; i < binary.Length; i += 4)
             {
                 this.memory[u] = (uint)((binary[i] << 24) | (binary[i + 1] << 16)
@@ -151,9 +168,9 @@ namespace UbplCommon.Processor
         {
             try
             {
-                while (this.registers[Register.XX] != DEFAULT_RETURN_ADDRESS)
+                while (this.registers[Register.XX] != returnAddress)
                 {
-                    if (this.registers[Register.XX] == TVARLON_KNLOAN_ADDRESS)
+                    if (this.registers[Register.XX] == UbplConstant.TVARLON_KNLOAN_ADDRESS)
                     {
                         debugBuffer.Add(this.memory[this.registers[Register.F5] + 4].ToString());
                         this.registers[Register.XX] = this.memory[this.registers[Register.F5]];
@@ -330,83 +347,9 @@ namespace UbplCommon.Processor
         
         byte GetValue8(OperandMode mode, Register register, uint value)
         {
-            byte result = 0;
-
-            switch (mode)
-            {
-                case OperandMode.REG32:
-                    result = (byte)(this.registers[register] >> 24);
-                    break;
-                case OperandMode.IMM32:
-                    result = (byte)(value >> 24);
-                    break;
-                case OperandMode.REG32_REG32:
-                    result = (byte)((this.registers[register] + this.registers[(Register)value]) >> 24);
-                    break;
-                case OperandMode.REG32_IMM32:
-                    result = (byte)((this.registers[register] + value) >> 24);
-                    break;
-                case OperandMode.ADDR_REG32:
-                    result = this.memory.GetValue8(this.registers[register]);
-                    break;
-                case OperandMode.ADDR_IMM32:
-                    result = this.memory.GetValue8(value);
-                    break;
-                case OperandMode.ADDR_REG32_REG32:
-                    result = this.memory.GetValue8(this.registers[register] + this.registers[(Register)value]);
-                    break;
-                case OperandMode.ADDR_REG32_IMM32:
-                    result = this.memory.GetValue8(this.registers[register] + value);
-                    break;
-                default:
-                    break;
-            }
-
-            return result;
-        }
-
-        ushort GetValue16(OperandMode mode, Register register, uint value)
-        {
-            ushort result = 0;
-
-            switch (mode)
-            {
-                case OperandMode.REG32:
-                    result = (ushort)(this.registers[register] >> 16);
-                    break;
-                case OperandMode.IMM32:
-                    result = (ushort)(value >> 16);
-                    break;
-                case OperandMode.REG32_REG32:
-                    result = (ushort)((this.registers[register] + this.registers[(Register)value]) >> 16);
-                    break;
-                case OperandMode.REG32_IMM32:
-                    result = (ushort)((this.registers[register] + value) >> 16);
-                    break;
-                case OperandMode.ADDR_REG32:
-                    result = this.memory.GetValue16(this.registers[register]);
-                    break;
-                case OperandMode.ADDR_IMM32:
-                    result = this.memory.GetValue16(value);
-                    break;
-                case OperandMode.ADDR_REG32_REG32:
-                    result = this.memory.GetValue16(this.registers[register] + this.registers[(Register)value]);
-                    break;
-                case OperandMode.ADDR_REG32_IMM32:
-                    result = this.memory.GetValue16(this.registers[register] + value);
-                    break;
-                default:
-                    break;
-            }
-
-            return result;
-        }
-
-        uint GetValue32(OperandMode mode, Register register, uint value)
-        {
             uint result = 0;
 
-            switch (mode)
+            switch ((OperandMode)((uint)mode & 3U))
             {
                 case OperandMode.REG32:
                     result = this.registers[register];
@@ -420,20 +363,96 @@ namespace UbplCommon.Processor
                 case OperandMode.REG32_IMM32:
                     result = this.registers[register] + value;
                     break;
-                case OperandMode.ADDR_REG32:
-                    result = this.memory.GetValue32(this.registers[register]);
+                default:
                     break;
-                case OperandMode.ADDR_IMM32:
-                    result = this.memory.GetValue32(value);
+            }
+
+            if (mode.HasFlag(OperandMode.ADD_XX))
+            {
+                result += this.registers[Register.XX];
+            }
+
+            if (mode.HasFlag(OperandMode.ADDRESS))
+            {
+                result = this.memory.GetValue8(result);
+            }
+            else
+            {
+                result >>= 24;
+            }
+
+            return (byte)result;
+        }
+
+        ushort GetValue16(OperandMode mode, Register register, uint value)
+        {
+            uint result = 0;
+
+            switch ((OperandMode)((uint)mode & 3U))
+            {
+                case OperandMode.REG32:
+                    result = this.registers[register];
                     break;
-                case OperandMode.ADDR_REG32_REG32:
-                    result = this.memory.GetValue32(this.registers[register] + this.registers[(Register)value]);
+                case OperandMode.IMM32:
+                    result = value;
                     break;
-                case OperandMode.ADDR_REG32_IMM32:
-                    result = this.memory.GetValue32(this.registers[register] + value);
+                case OperandMode.REG32_REG32:
+                    result = this.registers[register] + this.registers[(Register)value];
+                    break;
+                case OperandMode.REG32_IMM32:
+                    result = this.registers[register] + value;
                     break;
                 default:
                     break;
+            }
+
+            if (mode.HasFlag(OperandMode.ADD_XX))
+            {
+                result += this.registers[Register.XX];
+            }
+
+            if (mode.HasFlag(OperandMode.ADDRESS))
+            {
+                result = this.memory.GetValue16(result);
+            }
+            else
+            {
+                result >>= 16;
+            }
+
+            return (ushort)result;
+        }
+
+        uint GetValue32(OperandMode mode, Register register, uint value)
+        {
+            uint result = 0;
+
+            switch ((OperandMode)((uint)mode & 3U))
+            {
+                case OperandMode.REG32:
+                    result = this.registers[register];
+                    break;
+                case OperandMode.IMM32:
+                    result = value;
+                    break;
+                case OperandMode.REG32_REG32:
+                    result = this.registers[register] + this.registers[(Register)value];
+                    break;
+                case OperandMode.REG32_IMM32:
+                    result = this.registers[register] + value;
+                    break;
+                default:
+                    break;
+            }
+
+            if (mode.HasFlag(OperandMode.ADD_XX))
+            {
+                result += this.registers[Register.XX];
+            }
+
+            if (mode.HasFlag(OperandMode.ADDRESS))
+            {
+                result = this.memory.GetValue32(result);
             }
 
             return result;
@@ -441,32 +460,45 @@ namespace UbplCommon.Processor
 
         void SetValue8(OperandMode mode, Register register, uint tail, uint value)
         {
-            switch (mode)
+            if (mode.HasFlag(OperandMode.ADD_XX))
             {
-                case OperandMode.REG32:
-                    this.registers[register] &= 0x00FFFFFF;
-                    this.registers[register] |= value << 24;
-                    break;
-                case OperandMode.IMM32:
-                    throw new ArgumentException("Operand mode is 'IMM32'");
-                case OperandMode.REG32_REG32:
-                    throw new ArgumentException("Operand mode is 'REG32_REG32'");
-                case OperandMode.REG32_IMM32:
-                    throw new ArgumentException("Operand mode is 'REG32_IMM32'");
-                case OperandMode.ADDR_REG32:
-                    this.memory.SetValue8(this.registers[register], value);
-                    break;
-                case OperandMode.ADDR_IMM32:
-                    this.memory.SetValue8(tail, value);
-                    break;
-                case OperandMode.ADDR_REG32_REG32:
-                    this.memory.SetValue8(this.registers[register] + this.registers[(Register)tail], value);
-                    break;
-                case OperandMode.ADDR_REG32_IMM32:
-                    this.memory.SetValue8(this.registers[register] + tail, value);
-                    break;
-                default:
-                    throw new ArgumentException($"Operand mode is Unknown ({mode})");
+                throw new ArgumentException($"Operand mode is '{mode}'");
+            }
+
+            if (mode.HasFlag(OperandMode.ADDRESS))
+            {
+                uint setVal = 0;
+
+                switch ((OperandMode)((uint)mode & 3U))
+                {
+                    case OperandMode.REG32:
+                        setVal = this.registers[register];
+                        break;
+                    case OperandMode.IMM32:
+                        setVal = value;
+                        break;
+                    case OperandMode.REG32_REG32:
+                        setVal = this.registers[register] + this.registers[(Register)tail];
+                        break;
+                    case OperandMode.REG32_IMM32:
+                        setVal = this.registers[register] + tail;
+                        break;
+                    default:
+                        break;
+                }
+                this.memory.SetValue8(setVal, value);
+            }
+            else
+            {
+                switch (mode)
+                {
+                    case OperandMode.REG32:
+                        this.registers[register] &= 0x00FFFFFF;
+                        this.registers[register] |= value << 24;
+                        break;
+                    default:
+                        throw new ArgumentException($"Operand mode is '{mode}'");
+                }
             }
 
             this.flags = false;
@@ -474,32 +506,45 @@ namespace UbplCommon.Processor
 
         void SetValue16(OperandMode mode, Register register, uint tail, uint value)
         {
-            switch (mode)
+            if (mode.HasFlag(OperandMode.ADD_XX))
             {
-                case OperandMode.REG32:
-                    this.registers[register] &= 0x0000FFFF;
-                    this.registers[register] |= value << 16;
-                    break;
-                case OperandMode.IMM32:
-                    throw new ArgumentException("Operand mode is 'IMM32'");
-                case OperandMode.REG32_REG32:
-                    throw new ArgumentException("Operand mode is 'REG32_REG32'");
-                case OperandMode.REG32_IMM32:
-                    throw new ArgumentException("Operand mode is 'REG32_IMM32'");
-                case OperandMode.ADDR_REG32:
-                    this.memory.SetValue16(this.registers[register], value);
-                    break;
-                case OperandMode.ADDR_IMM32:
-                    this.memory.SetValue16(tail, value);
-                    break;
-                case OperandMode.ADDR_REG32_REG32:
-                    this.memory.SetValue16(this.registers[register] + this.registers[(Register)tail], value);
-                    break;
-                case OperandMode.ADDR_REG32_IMM32:
-                    this.memory.SetValue16(this.registers[register] + tail, value);
-                    break;
-                default:
-                    throw new ArgumentException($"Operand mode is Unknown ({mode})");
+                throw new ArgumentException($"Operand mode is '{mode}'");
+            }
+
+            if (mode.HasFlag(OperandMode.ADDRESS))
+            {
+                uint setVal = 0;
+
+                switch ((OperandMode)((uint)mode & 3U))
+                {
+                    case OperandMode.REG32:
+                        setVal = this.registers[register];
+                        break;
+                    case OperandMode.IMM32:
+                        setVal = value;
+                        break;
+                    case OperandMode.REG32_REG32:
+                        setVal = this.registers[register] + this.registers[(Register)tail];
+                        break;
+                    case OperandMode.REG32_IMM32:
+                        setVal = this.registers[register] + tail;
+                        break;
+                    default:
+                        break;
+                }
+                this.memory.SetValue16(setVal, value);
+            }
+            else
+            {
+                switch (mode)
+                {
+                    case OperandMode.REG32:
+                        this.registers[register] &= 0x0000FFFF;
+                        this.registers[register] |= value << 16;
+                        break;
+                    default:
+                        throw new ArgumentException($"Operand mode is '{mode}'");
+                }
             }
 
             this.flags = false;
@@ -507,33 +552,46 @@ namespace UbplCommon.Processor
 
         void SetValue32(OperandMode mode, Register register, uint tail, uint value)
         {
-            switch (mode)
+            if (mode.HasFlag(OperandMode.ADD_XX))
             {
-                case OperandMode.REG32:
-                    this.registers[register] = value;
-                    break;
-                case OperandMode.IMM32:
-                    throw new ArgumentException("Operand mode is 'IMM32'");
-                case OperandMode.REG32_REG32:
-                    throw new ArgumentException("Operand mode is 'REG32_REG32'");
-                case OperandMode.REG32_IMM32:
-                    throw new ArgumentException("Operand mode is 'REG32_IMM32'");
-                case OperandMode.ADDR_REG32:
-                    this.memory.SetValue32(this.registers[register], value);
-                    break;
-                case OperandMode.ADDR_IMM32:
-                    this.memory.SetValue32(tail, value);
-                    break;
-                case OperandMode.ADDR_REG32_REG32:
-                    this.memory.SetValue32(this.registers[register] + this.registers[(Register)tail], value);
-                    break;
-                case OperandMode.ADDR_REG32_IMM32:
-                    this.memory.SetValue32(this.registers[register] + tail, value);
-                    break;
-                default:
-                    throw new ArgumentException($"Operand mode is Unknown ({mode})");
+                throw new ArgumentException($"Operand mode is '{mode}'");
             }
 
+            if (mode.HasFlag(OperandMode.ADDRESS))
+            {
+                uint setVal = 0;
+
+                switch ((OperandMode)((uint)mode & 3U))
+                {
+                    case OperandMode.REG32:
+                        setVal = this.registers[register];
+                        break;
+                    case OperandMode.IMM32:
+                        setVal = value;
+                        break;
+                    case OperandMode.REG32_REG32:
+                        setVal = this.registers[register] + this.registers[(Register)tail];
+                        break;
+                    case OperandMode.REG32_IMM32:
+                        setVal = this.registers[register] + tail;
+                        break;
+                    default:
+                        break;
+                }
+                this.memory.SetValue32(setVal, value);
+            }
+            else
+            {
+                switch (mode)
+                {
+                    case OperandMode.REG32:
+                        this.registers[register] = value;
+                        break;
+                    default:
+                        throw new ArgumentException($"Operand mode is '{mode}'");
+                }
+            }
+            
             this.flags = false;
         }
 

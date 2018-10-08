@@ -26,13 +26,13 @@ namespace UbplCommon.Translator
         public bool IsImm
         {
             get => !Reg.HasValue && !SecondReg.HasValue
-                && Disp.HasValue && string.IsNullOrEmpty(Label);
+                && Disp.HasValue;
         }
 
         public bool IsReg
         {
             get => Reg.HasValue && !SecondReg.HasValue
-                && !Disp.HasValue && string.IsNullOrEmpty(Label);
+                && !Disp.HasValue;
         }
 
         public bool IsLabel
@@ -40,23 +40,23 @@ namespace UbplCommon.Translator
             get => !string.IsNullOrEmpty(Label);
         }
 
-        public bool IsRegAndImm
+        public bool IsRegImm
         {
             get => Reg.HasValue && !SecondReg.HasValue
-                && Disp.HasValue && string.IsNullOrEmpty(Label);
+                && Disp.HasValue;
         }
-
+        
         public bool HasSecondReg
         {
             get => Reg.HasValue && SecondReg.HasValue
                 && !Disp.HasValue && string.IsNullOrEmpty(Label);
         }
 
-        internal Operand(uint val) : this(null, null, val, null, false) { }
+        internal Operand(uint val, bool address = false) : this(null, null, val, null, address) { }
         internal Operand(Register reg, bool address = false) : this(reg, null, null, null, address) { }
         internal Operand(Register reg, uint val, bool address = false) : this(reg, null, val, null, address) { }
         internal Operand(Register reg, Register second, bool address = false) : this(reg, second, null, null, address) { }
-        internal Operand(string label, bool address, uint val = 0) : this(null, null, val, label, address) { }
+        internal Operand(string label, bool address) : this(null, null, null, label, address) { }
 
         internal Operand ToAddressing()
         {
@@ -65,76 +65,93 @@ namespace UbplCommon.Translator
                 throw new InvalidOperationException();
             }
             
-            return new Operand(this.Reg, this.SecondReg, this.Disp, null, true);
+            return new Operand(this.Reg, this.SecondReg, this.Disp, this.Label, true);
         }
 
-        public static Operand operator+(Operand left, Operand right)
+        public static Operand operator +(Operand left, Operand right)
         {
-            if (left.IsImm && right.IsImm)
-            {
-                throw new ArgumentException();
-            }
             if (left.IsAddress || right.IsAddress)
             {
-                throw new ArgumentException();
-            }
-            if (left.IsLabel || right.IsLabel)
-            {
-                throw new ArgumentException();
+                throw new ArgumentException("Not supported : 'a@ + b@'");
             }
 
-            if ((left.Reg.HasValue && (left.Disp.HasValue || left.SecondReg.HasValue))
-                || (right.Reg.HasValue && (right.Disp.HasValue || right.SecondReg.HasValue)))
+            if (((left.IsReg || left.IsLabel) && right.HasSecondReg)
+                || (left.HasSecondReg && (right.IsReg || right.IsLabel)))
             {
-                throw new ArgumentException();
+                throw new ArgumentException("Not supported : 'reg1 + reg2 + reg3/label'");
             }
-            else
+
+            if ((left.IsReg && left.IsLabel && right.IsReg)
+                || (left.IsReg && right.IsReg && right.IsLabel))
             {
-                return new Operand(left.Reg, right.Reg, null, null);
+                throw new ArgumentException("Not supported : 'reg1 + reg2 + reg3/label'");
             }
+            
+            if (left.IsLabel && right.IsLabel)
+            {
+                throw new ArgumentException("Not supported : 'label + label'");
+            }
+
+            uint value = (left.Disp ?? 0) + (right.Disp ?? 0);
+            string label = left.Label ?? right.Label;
+            Register? reg = left.Reg ?? right.Reg;
+            Register? second = left.Reg.HasValue ? right.Reg : null;
+
+            return new Operand(reg, second, value == 0 ? (uint?)null : value, label, false);
         }
 
         public static Operand operator+(Operand left, uint disp) {
-            return new Operand(left.Reg.Value, disp);
+            return left + new Operand(disp);
         }
 
         public static Operand operator+(uint disp, Operand right)
         {
-            return new Operand(right.Reg.Value, disp);
+            return new Operand(disp) + right;
+        }
+
+        public static Operand operator+(Operand left, string label)
+        {
+            return left + new Operand(label, false);
+        }
+
+        public static Operand operator+(string label, Operand right)
+        {
+            return new Operand(label, false) + right;
         }
 
         public override string ToString()
         {
-            StringBuilder buffer = new StringBuilder();
-
-            if (IsLabel)
+            List<string> list = new List<string>();
+            
+            if (this.Reg.HasValue)
             {
-                buffer.Append(Label);
-            }
-            else if (Reg.HasValue)
-            {
-                buffer.Append(Reg.Value);
-
-                if (SecondReg.HasValue)
-                {
-                    buffer.Append("+").Append(SecondReg);
-                }
-                else if (Disp.HasValue)
-                {
-                    buffer.Append("+").Append(Disp);
-                }
-            }
-            else if (Disp.HasValue)
-            {
-                buffer.Append(Disp.Value);
+                list.Add(this.Reg.Value.ToString());
             }
 
-            if (IsAddress && !IsLabel)
+            if (this.HasSecondReg)
             {
-                buffer.Append("@");
+                list.Add(this.SecondReg.Value.ToString());
             }
 
-            return buffer.ToString();
+            if (this.IsLabel)
+            {
+                list.Add(this.Label);
+            }
+
+            if (this.IsImm)
+            {
+                list.Add(this.Disp.HasValue.ToString());
+            }
+
+
+            if (IsAddress)
+            {
+                return string.Join("+", list) + "@";
+            }
+            else
+            {
+                return string.Join("+", list);
+            }
         }
 
         public override bool Equals(object obj)

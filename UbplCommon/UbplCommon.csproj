@@ -51,6 +51,7 @@
     <Compile Include="Translator\Code.cs" />
     <Compile Include="Translator\CodeGenerator.cs" />
     <Compile Include="Translator\FiType.cs" />
+    <Compile Include="Translator\LifemValue.cs" />
     <Compile Include="Translator\Operand.cs" />
     <Compile Include="UbplConstant.cs" />
   </ItemGroup>

@@ -35,7 +35,7 @@ namespace Ubpl2003lk.Core
 
         /// <summary>
         /// ラベルの値のタイプ．
-        /// 使用可能な値は"nll"か"l'"のみです．
+        /// 使用可能な値は"nll"，"l'"のみです．
         /// </summary>
         public string LabelType { get; set; }
 
