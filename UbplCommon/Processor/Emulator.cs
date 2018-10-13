@@ -462,7 +462,7 @@ namespace UbplCommon.Processor
         {
             if (mode.HasFlag(OperandMode.ADD_XX))
             {
-                throw new ArgumentException($"Operand mode is '{mode}'");
+                throw new ArgumentException($"Operand mode is '{mode.ToString()}'");
             }
 
             if (mode.HasFlag(OperandMode.ADDRESS))
@@ -497,7 +497,7 @@ namespace UbplCommon.Processor
                         this.registers[register] |= value << 24;
                         break;
                     default:
-                        throw new ArgumentException($"Operand mode is '{mode}'");
+                        throw new ArgumentException($"Operand mode is '{mode.ToString()}'");
                 }
             }
 
@@ -508,7 +508,7 @@ namespace UbplCommon.Processor
         {
             if (mode.HasFlag(OperandMode.ADD_XX))
             {
-                throw new ArgumentException($"Operand mode is '{mode}'");
+                throw new ArgumentException($"Operand mode is '{mode.ToString()}'");
             }
 
             if (mode.HasFlag(OperandMode.ADDRESS))
@@ -543,7 +543,7 @@ namespace UbplCommon.Processor
                         this.registers[register] |= value << 16;
                         break;
                     default:
-                        throw new ArgumentException($"Operand mode is '{mode}'");
+                        throw new ArgumentException($"Operand mode is '{mode.ToString()}'");
                 }
             }
 
@@ -554,7 +554,7 @@ namespace UbplCommon.Processor
         {
             if (mode.HasFlag(OperandMode.ADD_XX))
             {
-                throw new ArgumentException($"Operand mode is '{mode}'");
+                throw new ArgumentException($"Operand mode is '{mode.ToString()}'");
             }
 
             if (mode.HasFlag(OperandMode.ADDRESS))
@@ -588,7 +588,7 @@ namespace UbplCommon.Processor
                         this.registers[register] = value;
                         break;
                     default:
-                        throw new ArgumentException($"Operand mode is '{mode}'");
+                        throw new ArgumentException($"Operand mode is '{mode.ToString()}'");
                 }
             }
             

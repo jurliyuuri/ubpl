@@ -99,6 +99,15 @@ namespace UbplCommon.Translator
 
             foreach (var constant in this.constantList)
             {
+                if (constant.SetType == Mnemonic.KRZ && (count & 0x3) != 0)
+                {
+                    count += 4 - (count & 0x3);
+                }
+                else if (constant.SetType == Mnemonic.KRZ16C && (count & 0x1) != 0)
+                {
+                    count += 1;
+                }
+
                 if (constant.Labels != null)
                 {
                     foreach(var label in constant.Labels)
@@ -182,25 +191,54 @@ namespace UbplCommon.Translator
                 count += 16;
             }
 
+            count = this.codeList.Count * 16;
             foreach (var constant in this.constantList)
             {
                 var binary = ToBinary(constant.Value);
+
+                if (constant.SetType == Mnemonic.KRZ && (count & 0x3) != 0)
+                {
+                    int offset = 4 - (count & 0x3);
+                    for(int i = 0; i < offset; i++)
+                    {
+                        binaryCode.Add(0);
+                    }
+                    count += offset;
+                }
+                else if (constant.SetType == Mnemonic.KRZ16C && (count & 0x1) != 0)
+                {
+                    binaryCode.Add(0);
+                    count += 1;
+                }
 
                 switch (constant.SetType)
                 {
                     case Mnemonic.KRZ8C:
                         binaryCode.Add(binary[3]);
+                        count += 1;
                         break;
                     case Mnemonic.KRZ16C:
                         binaryCode.Add(binary[2]);
                         binaryCode.Add(binary[3]);
+                        count += 2;
                         break;
                     case Mnemonic.KRZ:
                         binaryCode.AddRange(binary);
+                        count += 4;
                         break;
                     default:
                         throw new ApplicationException($"Unknown Exception: {constant.SetType}");
                 }
+            }
+
+            if((count & 0x3) != 0)
+            {
+                int offset = 4 - (count & 0x3);
+                for (int i = 0; i < offset; i++)
+                {
+                    binaryCode.Add(0);
+                }
+                count += offset;
             }
 
             return new ReadOnlyCollection<byte>(binaryCode);

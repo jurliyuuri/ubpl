@@ -32,13 +32,7 @@ namespace Ubpl2003lk.Core
         /// 最後の値
         /// </summary>
         public Operand Tail { get; set; }
-
-        /// <summary>
-        /// ラベルの値のタイプ．
-        /// 使用可能な値は"nll"，"l'"のみです．
-        /// </summary>
-        public string LabelType { get; set; }
-
+        
         /// <summary>
         /// ラベル名
         /// </summary>
@@ -58,7 +52,7 @@ namespace Ubpl2003lk.Core
 
             if(IsLabel)
             {
-                buf.Append("LabelType: ").Append(LabelType)
+                buf.Append("Mnemonic: ").Append(Mnemonic)
                 .Append(", Label:").Append(Label);
             }
             else

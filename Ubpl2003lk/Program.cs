@@ -19,19 +19,17 @@ namespace Ubpl2003lk
             }
 
             string output = "a.out";
+            bool isDebug = false;
             List<string> input = new List<string>();
 
             for (int i = 0; i < args.Length; i++)
             {
                 switch (args[i])
                 {
+                    case "--debug":
+                        isDebug = true;
+                        break;
                     case "-o":
-                        if (i == args.Length - 1)
-                        {
-                            Console.WriteLine("No output file name.");
-                            Environment.Exit(1);
-                        }
-
                         output = args[++i];
                         break;
                     default:
@@ -40,7 +38,18 @@ namespace Ubpl2003lk
                 }
             }
 
-            var assembler = new LkAssembler(input);
+
+            if (!input.Any())
+            {
+                Console.WriteLine("No output file name.");
+                Environment.Exit(1);
+            }
+
+            var assembler = new LkAssembler(input)
+            {
+                IsDebug = isDebug,
+            };
+
             assembler.Execute(output);
         }
     }

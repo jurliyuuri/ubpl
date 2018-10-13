@@ -9,57 +9,57 @@ namespace Ubpl2003lk
     /// <summary>
     /// 命令の種類を表す列挙体です．
     /// </summary>
-    public enum LkMnemonic : byte
+    public enum LkMnemonic : uint
     {
         /// <summary>
         /// 加算
         /// </summary>
-        ATA = 0x00,
+        ATA,
 
         /// <summary>
         /// 減算
         /// </summary>
-        NTA = 0x01,
+        NTA,
 
         /// <summary>
         /// ビット積
         /// </summary>
-        ADA = 0x02,
+        ADA,
 
         /// <summary>
         /// ビット和
         /// </summary>
-        EKC = 0x03,
+        EKC,
 
         /// <summary>
         /// 論理右シフト
         /// </summary>
-        DTO = 0x04,
+        DTO,
 
         /// <summary>
         /// 左シフト
         /// </summary>
-        DRO = 0x05,
+        DRO,
 
         /// <summary>
         /// 算術右シフト
         /// </summary>
-        DTOSNA = 0x06,
+        DTOSNA,
 
         /// <summary>
         /// ビットxnor
         /// </summary>
-        DAL = 0x07,
+        DAL,
 
         /// <summary>
         /// コピー
         /// </summary>
-        KRZ = 0x08,
+        KRZ,
 
         /// <summary>
         /// フラグが立っているときのみkrzを行う
         /// </summary>
-        MALKRZ = 0x09,
+        MALKRZ,
 
         /// <summary>
         /// 第一オペランドの上位8bitを32bit符号拡張してkrzを行う
@@ -84,66 +84,91 @@ namespace Ubpl2003lk
         /// <summary>
         /// 超過ならフラグを立てる(符号無し比較)
         /// </summary>
-        LLONYS = 0x10,
+        LLONYS,
 
         /// <summary>
         /// 以下ならフラグを立てる(符号無し比較)
         /// </summary>
-        XTLONYS = 0x11,
+        XTLONYS,
 
         /// <summary>
         /// 以上ならフラグを立てる(符号無し比較)
         /// </summary>
-        XOLONYS = 0x12,
+        XOLONYS,
 
         /// <summary>
         /// 未満ならフラグを立てる(符号無し比較)
         /// </summary>
-        XYLONYS = 0x13,
+        XYLONYS,
 
         /// <summary>
         /// 同等ならフラグを立てる
         /// </summary>
-        CLO = 0x16,
+        CLO,
 
         /// <summary>
         /// 等しくないならフラグを立てる(符号付き比較)
         /// </summary>
-        NIV = 0x17,
+        NIV,
 
         /// <summary>
         /// 超過ならフラグを立てる(符号付き比較)
         /// </summary>
-        LLO = 0x18,
+        LLO,
 
         /// <summary>
         /// 以下ならフラグを立てる(符号付き比較)
         /// </summary>
-        XTLO = 0x19,
+        XTLO,
 
         /// <summary>
         /// 以上ならフラグを立てる(符号付き比較)
         /// </summary>
-        XOLO = 0x1A,
+        XOLO,
 
         /// <summary>
         /// 未満ならフラグを立てる(符号付き比較)
         /// </summary>
-        XYLO = 0x1B,
+        XYLO,
 
         /// <summary>
         /// 二重移動
         /// </summary>
-        INJ = 0x20,
+        INJ,
 
         /// <summary>
         /// 符号無し乗算
         /// </summary>
-        LAT = 0x28,
+        LAT,
 
         /// <summary>
         /// 符号付き乗算
         /// </summary>
-        LATSNA = 0x29,
+        LATSNA,
+
+        /// <summary>
+        /// 前置ラベル
+        /// </summary>
+        NLL,
+
+        /// <summary>
+        /// 後置ラベル
+        /// </summary>
+        L,
+
+        /// <summary>
+        /// 定数定義 32bit
+        /// </summary>
+        LIFEM,
+
+        /// <summary>
+        /// 定数定義 8bit
+        /// </summary>
+        LIFEM8,
+
+        /// <summary>
+        /// 定数定義 16bit
+        /// </summary>
+        LIFEM16,
     }
 }

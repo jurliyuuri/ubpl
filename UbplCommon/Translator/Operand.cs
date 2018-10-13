@@ -72,24 +72,24 @@ namespace UbplCommon.Translator
         {
             if (left.IsAddress || right.IsAddress)
             {
-                throw new ArgumentException("Not supported : 'a@ + b@'");
+                throw new ArgumentException($"Not supported : 'a@ + b@' ({left} + {right})");
             }
 
             if (((left.IsReg || left.IsLabel) && right.HasSecondReg)
                 || (left.HasSecondReg && (right.IsReg || right.IsLabel)))
             {
-                throw new ArgumentException("Not supported : 'reg1 + reg2 + reg3/label'");
+                throw new ArgumentException($"Not supported : 'reg1 + reg2 + reg3/label' ({left} + {right})");
             }
 
             if ((left.IsReg && left.IsLabel && right.IsReg)
                 || (left.IsReg && right.IsReg && right.IsLabel))
             {
-                throw new ArgumentException("Not supported : 'reg1 + reg2 + reg3/label'");
+                throw new ArgumentException($"Not supported : 'reg1 + reg2 + reg3/label' ({left} + {right})");
             }
             
             if (left.IsLabel && right.IsLabel)
             {
-                throw new ArgumentException("Not supported : 'label + label'");
+                throw new ArgumentException($"Not supported : 'label + label' ({left} + {right})");
             }
 
             uint value = (left.Disp ?? 0) + (right.Disp ?? 0);
@@ -140,7 +140,7 @@ namespace UbplCommon.Translator
 
             if (this.IsImm)
             {
-                list.Add(this.Disp.HasValue.ToString());
+                list.Add(this.Disp.Value.ToString());
             }
 
 
