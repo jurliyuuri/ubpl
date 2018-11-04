@@ -16,5 +16,6 @@ namespace UbplCommon.Translator
         public IList<string> Labels { get; internal set; }
         public Mnemonic SetType { get; set; }
         public uint Value { get; set; }
+        public string SourceLabel { get; set; }
     }
 }

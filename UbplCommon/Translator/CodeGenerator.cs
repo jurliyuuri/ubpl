@@ -12,8 +12,8 @@ namespace UbplCommon.Translator
     {
         private readonly IList<Code> codeList;
         private readonly IDictionary<string, int> labels;
-        private readonly IList<LifemValue> constantList;
-        private LifemValue constantTemporary;
+        private readonly IList<LifemValue> lifemList;
+        private LifemValue lifemTemporary;
 
         protected static readonly Operand F0 = new Operand(Register.F0);
         protected static readonly Operand F1 = new Operand(Register.F1);
@@ -40,8 +40,8 @@ namespace UbplCommon.Translator
         {
             codeList = new List<Code>();
             labels = new Dictionary<string, int>();
-            constantList = new List<LifemValue>();
-            constantTemporary = null;
+            lifemList = new List<LifemValue>();
+            lifemTemporary = null;
         }
 
         protected Operand Seti(Operand opd)
@@ -89,34 +89,35 @@ namespace UbplCommon.Translator
         {
             List<byte> binaryCode = new List<byte>();
 
-            if (this.constantTemporary != null)
+            if (this.lifemTemporary != null)
             {
-                this.constantList.Add(this.constantTemporary);
-                this.constantTemporary = null;
+                this.lifemList.Add(this.lifemTemporary);
+                this.lifemTemporary = null;
             }
-            
-            int count = this.codeList.Count * 16;
 
-            foreach (var constant in this.constantList)
+            int labelLifemCount = this.lifemList.Where(x => !string.IsNullOrEmpty(x.SourceLabel)).Count();
+            int count = (this.codeList.Count + labelLifemCount + 1) * 16;
+            
+            foreach (var lifem in this.lifemList)
             {
-                if (constant.SetType == Mnemonic.KRZ && (count & 0x3) != 0)
+                if (lifem.SetType == Mnemonic.KRZ && (count & 0x3) != 0)
                 {
                     count += 4 - (count & 0x3);
                 }
-                else if (constant.SetType == Mnemonic.KRZ16C && (count & 0x1) != 0)
+                else if (lifem.SetType == Mnemonic.KRZ16C && (count & 0x1) != 0)
                 {
                     count += 1;
                 }
 
-                if (constant.Labels != null)
+                if (lifem.Labels != null)
                 {
-                    foreach(var label in constant.Labels)
+                    foreach(var label in lifem.Labels)
                     {
                         this.labels.Add(new KeyValuePair<string, int>(label, count));
                     }
                 }
-
-                switch (constant.SetType)
+                
+                switch (lifem.SetType)
                 {
                     case Mnemonic.KRZ8C:
                         count += 1;
@@ -128,7 +129,85 @@ namespace UbplCommon.Translator
                         count += 4;
                         break;
                     default:
-                        throw new ApplicationException($"Unknown Exception: {constant.SetType}");
+                        throw new ApplicationException($"Unknown Exception: {lifem.SetType}");
+                }
+            }
+
+            binaryCode.AddRange(new byte[]
+            {
+                0x00, 0x00, 0x00, 0x08,
+                0x03, 0x07, 0x00, 0x0F,
+                0xFF, 0xFF, 0xFF, 0xF0,
+                0x00, 0x00, 0x00, 0x00,
+            });
+
+            count = (this.codeList.Count + labelLifemCount + 1) * 16;
+            foreach (var lifem in this.lifemList)
+            {
+                if (lifem.SetType == Mnemonic.KRZ && (count & 0x3) != 0)
+                {
+                    count += 4 - (count & 0x3);
+                }
+                else if (lifem.SetType == Mnemonic.KRZ16C && (count & 0x1) != 0)
+                {
+                    count += 1;
+                }
+
+                if (!string.IsNullOrEmpty(lifem.SourceLabel))
+                {
+                    int position = this.labels.Where(x => x.Key == lifem.SourceLabel)
+                        .Select(x => x.Value).Single();
+
+                    switch (lifem.SetType)
+                    {
+                        case Mnemonic.KRZ8C:
+                            binaryCode.AddRange(new byte[] {
+                                0x00, 0x00, 0x00, 0x0C,
+                                0x03, 0x0F, 0x23, 0x0F,
+                                (byte)(position >> 24),(byte)(position >> 16),
+                                (byte)(position >> 8),(byte)(position),
+                                (byte)(count >> 24),(byte)(count >> 16),
+                                (byte)(count >> 8),(byte)(count),
+                            });
+                            break;
+                        case Mnemonic.KRZ16C:
+                            binaryCode.AddRange(new byte[] {
+                                0x00, 0x00, 0x00, 0x0D,
+                                0x03, 0x0F, 0x23, 0x0F,
+                                (byte)(position >> 24),(byte)(position >> 16),
+                                (byte)(position >> 8),(byte)(position),
+                                (byte)(count >> 24),(byte)(count >> 16),
+                                (byte)(count >> 8),(byte)(count),
+                            });
+                            break;
+                        case Mnemonic.KRZ:
+                            binaryCode.AddRange(new byte[] {
+                                0x00, 0x00, 0x00, 0x08,
+                                0x03, 0x0F, 0x23, 0x0F,
+                                (byte)(position >> 24),(byte)(position >> 16),
+                                (byte)(position >> 8),(byte)(position),
+                                (byte)(count >> 24),(byte)(count >> 16),
+                                (byte)(count >> 8),(byte)(count),
+                            });
+                            break;
+                        default:
+                            break;
+                    }
+                }
+
+                switch (lifem.SetType)
+                {
+                    case Mnemonic.KRZ8C:
+                        count += 1;
+                        break;
+                    case Mnemonic.KRZ16C:
+                        count += 2;
+                        break;
+                    case Mnemonic.KRZ:
+                        count += 4;
+                        break;
+                    default:
+                        break;
                 }
             }
 
@@ -192,11 +271,11 @@ namespace UbplCommon.Translator
             }
 
             count = this.codeList.Count * 16;
-            foreach (var constant in this.constantList)
+            foreach (var lifem in this.lifemList)
             {
-                var binary = ToBinary(constant.Value);
+                var binary = ToBinary(lifem.Value);
 
-                if (constant.SetType == Mnemonic.KRZ && (count & 0x3) != 0)
+                if (lifem.SetType == Mnemonic.KRZ && (count & 0x3) != 0)
                 {
                     int offset = 4 - (count & 0x3);
                     for(int i = 0; i < offset; i++)
@@ -205,13 +284,13 @@ namespace UbplCommon.Translator
                     }
                     count += offset;
                 }
-                else if (constant.SetType == Mnemonic.KRZ16C && (count & 0x1) != 0)
+                else if (lifem.SetType == Mnemonic.KRZ16C && (count & 0x1) != 0)
                 {
                     binaryCode.Add(0);
                     count += 1;
                 }
 
-                switch (constant.SetType)
+                switch (lifem.SetType)
                 {
                     case Mnemonic.KRZ8C:
                         binaryCode.Add(binary[3]);
@@ -227,7 +306,7 @@ namespace UbplCommon.Translator
                         count += 4;
                         break;
                     default:
-                        throw new ApplicationException($"Unknown Exception: {constant.SetType}");
+                        throw new ApplicationException($"Unknown Exception: {lifem.SetType}");
                 }
             }
 
@@ -260,14 +339,14 @@ namespace UbplCommon.Translator
 
         private void Append(Mnemonic mne, Operand head, Operand tail)
         {
-            if (this.constantTemporary != null)
+            if (this.lifemTemporary != null)
             {
-                if (this.constantList.LastOrDefault() != this.constantTemporary)
+                if (this.lifemList.LastOrDefault() != this.lifemTemporary)
                 {
-                    this.constantList.Add(this.constantTemporary);
+                    this.lifemList.Add(this.lifemTemporary);
                 }
 
-                this.constantTemporary = null;
+                this.lifemTemporary = null;
             }
 
             ModRm modrm = CreateModRm(head, tail);
@@ -339,12 +418,12 @@ namespace UbplCommon.Translator
         /// <param name="name">ラベル名</param>
         protected void L(string name)
         {
-            if (this.constantTemporary != null)
+            if (this.lifemTemporary != null)
             {
-                this.constantTemporary.Labels.Add(name);
-                if(this.constantTemporary != this.constantList.LastOrDefault())
+                this.lifemTemporary.Labels.Add(name);
+                if(this.lifemTemporary != this.lifemList.LastOrDefault())
                 {
-                    this.constantList.Add(this.constantTemporary);
+                    this.lifemList.Add(this.lifemTemporary);
                 }
             }
             else if (this.codeList.Any())
@@ -372,25 +451,24 @@ namespace UbplCommon.Translator
         /// <param name="value"></param>
         protected void Lifem(uint value)
         {
-            this.constantTemporary = new LifemValue
+            Lifem(this.lifemTemporary = new LifemValue
             {
                 SetType = Mnemonic.KRZ,
                 Value = value,
-            };
+            });
+        }
 
-            var labels = this.labels.Where(x => x.Value == this.codeList.Count * 16)
-                .Select(x => x.Key).ToList();
-
-            if (labels.Any())
+        /// <summary>
+        /// ラベル先のアドレスを定数として定義します．
+        /// </summary>
+        /// <param name="value"></param>
+        protected void Lifem(string label)
+        {
+            Lifem(new LifemValue
             {
-                labels.ForEach(x =>
-                {
-                    this.constantTemporary.Labels.Add(x);
-                    this.labels.Remove(x);
-                });
-            }
-
-            this.constantList.Add(this.constantTemporary);
+                SetType = Mnemonic.KRZ,
+                SourceLabel = label,
+            });
         }
 
         /// <summary>
@@ -399,25 +477,24 @@ namespace UbplCommon.Translator
         /// <param name="value"></param>
         protected void Lifem8(uint value)
         {
-            this.constantTemporary = new LifemValue
+            Lifem(new LifemValue
             {
                 SetType = Mnemonic.KRZ8C,
                 Value = value,
-            };
+            });
+        }
 
-            var labels = this.labels.Where(x => x.Value == this.codeList.Count * 16)
-                .Select(x => x.Key).ToList();
-
-            if (labels.Any())
+        /// <summary>
+        /// ラベル先のアドレスを定数として定義します．
+        /// </summary>
+        /// <param name="value"></param>
+        protected void Lifem8(string label)
+        {
+            Lifem(new LifemValue
             {
-                labels.ForEach(x =>
-                {
-                    this.constantTemporary.Labels.Add(x);
-                    this.labels.Remove(x);
-                });
-            }
-
-            this.constantList.Add(this.constantTemporary);
+                SetType = Mnemonic.KRZ8C,
+                SourceLabel = label,
+            });
         }
 
         /// <summary>
@@ -426,12 +503,33 @@ namespace UbplCommon.Translator
         /// <param name="value"></param>
         protected void Lifem16(uint value)
         {
-            this.constantTemporary = new LifemValue
+            Lifem(new LifemValue
             {
                 SetType = Mnemonic.KRZ16C,
                 Value = value,
-            };
+            }); ;
+        }
 
+        /// <summary>
+        /// ラベル先のアドレスを定数として定義します．
+        /// </summary>
+        /// <param name="value"></param>
+        protected void Lifem16(string label)
+        {
+            Lifem(new LifemValue
+            {
+                SetType = Mnemonic.KRZ16C,
+                SourceLabel = label,
+            });
+        }
+
+        /// <summary>
+        /// 指定された値を定数として定義します．
+        /// </summary>
+        /// <param name="value"></param>
+        private void Lifem(LifemValue lifem)
+        {
+            this.lifemTemporary = lifem;
             var labels = this.labels.Where(x => x.Value == this.codeList.Count * 16)
                 .Select(x => x.Key).ToList();
 
@@ -439,12 +537,12 @@ namespace UbplCommon.Translator
             {
                 labels.ForEach(x =>
                 {
-                    this.constantTemporary.Labels.Add(x);
+                    this.lifemTemporary.Labels.Add(x);
                     this.labels.Remove(x);
                 });
             }
 
-            this.constantList.Add(this.constantTemporary);
+            this.lifemList.Add(this.lifemTemporary);
         }
 
         /// <summary>

@@ -337,7 +337,7 @@ namespace Ubpl2003lk.Core
                         case "lifem16":
                             Operand opd = Convert(wordList[++i], fileCount);
 
-                            if (opd.IsImm)
+                            if (opd.IsImm || opd.IsLabel)
                             {
                                 codeList.Add(new LkCode
                                 {
@@ -682,13 +682,34 @@ namespace Ubpl2003lk.Core
                         L(code.Label);
                         break;
                     case LkMnemonic.LIFEM:
-                        Lifem(code.Head.Disp.Value);
+                        if(code.Head.IsImm)
+                        {
+                            Lifem(code.Head.Disp.Value);
+                        }
+                        else
+                        {
+                            Lifem(code.Head.Label);
+                        }
                         break;
                     case LkMnemonic.LIFEM8:
-                        Lifem8(code.Head.Disp.Value);
+                        if (code.Head.IsImm)
+                        {
+                            Lifem8(code.Head.Disp.Value);
+                        }
+                        else
+                        {
+                            Lifem8(code.Head.Label);
+                        }
                         break;
                     case LkMnemonic.LIFEM16:
-                        Lifem16(code.Head.Disp.Value);
+                        if (code.Head.IsImm)
+                        {
+                            Lifem16(code.Head.Disp.Value);
+                        }
+                        else
+                        {
+                            Lifem16(code.Head.Label);
+                        }
                         break;
                     default:
                         throw new ApplicationException($"Unknown value: {code}");
