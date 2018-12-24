@@ -18,7 +18,7 @@ namespace UbplCommon
             }
             else
             {
-                throw new ArgumentException($"Not defined character: {c}");
+                throw new ArgumentException($"Not defined character: {c} : {(byte)c} ");
             }
         }
         

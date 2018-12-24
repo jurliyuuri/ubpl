@@ -980,7 +980,23 @@ namespace UbplCommon.Processor
             switch (headValue)
             {
                 case 0x76:
-                    SetValue32(modrm.ModeTail, modrm.RegTail, tail, CharacterCode.ToByte((char)Console.Read()));
+                    {
+
+                        int value = Console.Read();
+                        
+                        if (value == '\r' || value == '\n')
+                        {
+                            value = Console.In.Peek();
+                            if(value == '\n')
+                            {
+                                Console.Read();
+                            }
+
+                            value = Console.Read();
+                        }
+
+                        SetValue8(modrm.ModeTail, modrm.RegTail, tail, CharacterCode.ToByte((char)value));
+                    }
                     break;
                 case 0x81:
                     {
