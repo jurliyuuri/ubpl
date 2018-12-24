@@ -170,5 +170,10 @@ namespace Ubpl2003lk
         /// 定数定義 16bit
         /// </summary>
         LIFEM16,
+
+        /// <summary>
+        /// I/O命令
+        /// </summary>
+        KLON,
     }
 }

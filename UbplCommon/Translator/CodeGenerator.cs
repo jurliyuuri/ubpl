@@ -1167,6 +1167,11 @@ namespace UbplCommon.Translator
         {
             Append(Mnemonic.LATSNA, opd1, opd2);
         }
+
+        protected void Klon(Operand opd1, Operand opd2)
+        {
+            Append(Mnemonic.KLON, opd1, opd2);
+        }
     }
 
     #endregion

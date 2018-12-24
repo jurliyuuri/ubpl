@@ -250,6 +250,7 @@ namespace Ubpl2003lk.Core
                     case "kRz8c":
                     case "krz16c":
                     case "kRz16c":
+                    case "klon":
                         i += 2;
                         break;
                     case "nac":
@@ -371,6 +372,7 @@ namespace Ubpl2003lk.Core
                         case "kRz8c":
                         case "krz16c":
                         case "kRz16c":
+                        case "klon":
                             (head, tail, i) = GetParam(wordList, isCI, i);
 
                             codeList.Add(new LkCode
@@ -710,6 +712,9 @@ namespace Ubpl2003lk.Core
                         {
                             Lifem16(code.Head.Label);
                         }
+                        break;
+                    case LkMnemonic.KLON:
+                        Klon(code.Head, code.Tail);
                         break;
                     default:
                         throw new ApplicationException($"Unknown value: {code}");

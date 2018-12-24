@@ -167,5 +167,10 @@ namespace UbplCommon
         /// 符号付き除算
         /// </summary>
         KAKSNA = 0x0000002C,
+
+        /// <summary>
+        /// I/O命令
+        /// </summary>
+        KLON = 0x00000040,
     }
 }

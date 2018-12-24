@@ -120,6 +120,11 @@ namespace UbplCommon.Processor
             uint readAddress = address & 0xFFFFFFFCU;
             uint pos = address & 0x03U;
 
+            if (!this.memory.ContainsKey(readAddress))
+            {
+                this.memory[readAddress] = (uint)this.random.Next(int.MinValue, int.MaxValue);
+            }
+
             switch (pos)
             {
                 case 0:

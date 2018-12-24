@@ -288,6 +288,9 @@ namespace UbplCommon.Processor
                         case Mnemonic.KAKSNA:
                             Kaksna(modrm, first, second);
                             break;
+                        case Mnemonic.KLON:
+                            Klon(modrm, first, second);
+                            break;
                         default:
                             throw new NotImplementedException($"Not Implemented: {code:X}, nx = {(this.registers[Register.XX] - 16):X08}");
                     }
@@ -931,8 +934,8 @@ namespace UbplCommon.Processor
         /// </summary>
         void Lat(ModRm modrm, uint head, uint tail)
         {
-            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
-            ulong tailValue = (ulong)GetValue32(modrm.ModeTail, modrm.RegTail, tail);
+            ulong headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
+            ulong tailValue = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
 
             this.temporary = tailValue * headValue;
         }
@@ -942,10 +945,10 @@ namespace UbplCommon.Processor
         /// </summary>
         void Latsna(ModRm modrm, uint head, uint tail)
         {
-            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
+            long headValue = (int)GetValue32(modrm.ModeHead, modrm.RegHead, head);
             long tailValue = (int)GetValue32(modrm.ModeTail, modrm.RegTail, tail);
 
-            this.temporary = (ulong)(tail * head);
+            this.temporary = (ulong)(tailValue * headValue);
         }
 
         /// <summary>
@@ -953,7 +956,7 @@ namespace UbplCommon.Processor
         /// </summary>
         void Kak(ModRm modrm, uint head, uint tail)
         {
-
+            throw new NotSupportedException("Not supported 'kak'");
         }
 
         /// <summary>
@@ -961,7 +964,34 @@ namespace UbplCommon.Processor
         /// </summary>
         void Kaksna(ModRm modrm, uint head, uint tail)
         {
+            throw new NotSupportedException("Not supported 'kaksna'");
+        }
 
+        /// <summary>
+        /// klonの処理付行います．
+        /// </summary>
+        /// <param name="modrm"></param>
+        /// <param name="head"></param>
+        /// <param name="tail"></param>
+        void Klon(ModRm modrm, uint head, uint tail)
+        {
+            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
+
+            switch (headValue)
+            {
+                case 0x76:
+                    SetValue32(modrm.ModeTail, modrm.RegTail, tail, CharacterCode.ToByte((char)Console.Read()));
+                    break;
+                case 0x81:
+                    {
+                        uint tailValue = GetValue8(modrm.ModeTail, modrm.RegTail, tail);
+                        char c = CharacterCode.ToChar(tailValue);
+                        Console.Write(c == '\n' ? Environment.NewLine : c.ToString());
+                    }
+                    break;
+                default:
+                    break;
+            }
         }
         
         #endregion
