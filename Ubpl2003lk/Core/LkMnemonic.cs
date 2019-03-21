@@ -150,12 +150,7 @@ namespace Ubpl2003lk
         /// 前置ラベル
         /// </summary>
         NLL,
-
-        /// <summary>
-        /// 後置ラベル
-        /// </summary>
-        L,
-
+        
         /// <summary>
         /// 定数定義 32bit
         /// </summary>

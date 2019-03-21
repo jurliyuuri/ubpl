@@ -34,16 +34,16 @@ namespace Ubpl2003lk.Core
         public Operand Tail { get; set; }
         
         /// <summary>
-        /// ラベル名
+        /// ラベル
         /// </summary>
-        public string Label { get; set; }
+        public JumpLabel Label { get; set; }
 
         /// <summary>
         /// この中間表現がラベルを表しているかどうかを返します．
         /// </summary>
         public bool IsLabel
         {
-            get => !string.IsNullOrEmpty(Label);
+            get => Label != null;
         }
 
         public override string ToString()

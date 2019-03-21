@@ -144,7 +144,7 @@ namespace UbplCommon
 
         /// <summary>
         /// 乗算結果設定
-        /// krz ((tmp >> 32) & 0x0000FFFF) A, krz (tmp & 0x0000FFFF) Bと同等
+        /// krz ((tmp >> 32) & 0x0000FFFF) head, krz (tmp & 0x0000FFFF) tailと同等
         /// </summary>
         ANF = 0x00000022,
 

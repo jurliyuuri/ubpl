@@ -160,7 +160,6 @@ namespace UbplCommon.Processor
             Read(File.ReadAllBytes(filepath));
         }
 
-
         /// <summary>
         /// 読み込んだバイナリコードを実行します．
         /// </summary>
@@ -909,7 +908,7 @@ namespace UbplCommon.Processor
 
         /// <summary>
         /// mteの処理を行います．
-        /// krz64 head &lt;&lt; 32 | tail tmp と等しくなります．
+        /// krz64 (head &lt;&lt; 32 | tail) tmp と等しくなります．
         /// </summary>
         void Mte(ModRm modrm, uint head, uint tail)
         {
@@ -921,12 +920,12 @@ namespace UbplCommon.Processor
 
         /// <summary>
         /// anfの処理を行います．
-        /// krz ((tmp >> 32) & 0x0000FFFF) tail, krz (tmp & 0x0000FFFF) headと等しくなります．
+        /// krz ((tmp >> 32) & 0x0000FFFF) head, krz (tmp & 0x0000FFFF) tailと等しくなります．
         /// </summary>
         void Anf(ModRm modrm, uint head, uint tail)
         {
-            SetValue32(modrm.ModeTail, modrm.RegTail, tail, (uint)(this.temporary >> 32));
-            SetValue32(modrm.ModeHead, modrm.RegHead, head, (uint)(this.temporary));
+            SetValue32(modrm.ModeHead, modrm.RegHead, head, (uint)(this.temporary >> 32));
+            SetValue32(modrm.ModeTail, modrm.RegTail, tail, (uint)(this.temporary));
         }
 
         /// <summary>

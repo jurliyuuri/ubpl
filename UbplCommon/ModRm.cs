@@ -22,7 +22,7 @@ namespace UbplCommon
         public uint Value
         {
             get;
-            private set;
+            set;
         }
 
         public OperandMode ModeHead

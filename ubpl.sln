@@ -9,6 +9,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ubpl", "Ubpl\Ubpl.csproj", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ubpl2003lk", "Ubpl2003lk\Ubpl2003lk.csproj", "{30CAD368-B737-49A2-BE51-3CCF96434C25}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ubpldir", "Ubpldir\Ubpldir.csproj", "{AF249CE3-B965-400D-8619-7464BF910634}"
+	ProjectSection(ProjectDependencies) = postProject
+		{6B4837F8-17F4-4980-A277-3AF65B3D45ED} = {6B4837F8-17F4-4980-A277-3AF65B3D45ED}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +32,10 @@ Global
 		{30CAD368-B737-49A2-BE51-3CCF96434C25}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{30CAD368-B737-49A2-BE51-3CCF96434C25}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{30CAD368-B737-49A2-BE51-3CCF96434C25}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AF249CE3-B965-400D-8619-7464BF910634}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AF249CE3-B965-400D-8619-7464BF910634}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AF249CE3-B965-400D-8619-7464BF910634}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AF249CE3-B965-400D-8619-7464BF910634}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

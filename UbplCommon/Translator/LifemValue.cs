@@ -10,12 +10,12 @@ namespace UbplCommon.Translator
     {
         public LifemValue()
         {
-            Labels = new List<string>();
+            Labels = new List<JumpLabel>();
         }
 
-        public IList<string> Labels { get; internal set; }
+        public IList<JumpLabel> Labels { get; internal set; }
         public Mnemonic SetType { get; set; }
         public uint Value { get; set; }
-        public string SourceLabel { get; set; }
+        public JumpLabel SourceLabel { get; set; }
     }
 }

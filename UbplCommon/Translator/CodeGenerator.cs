@@ -11,19 +11,18 @@ namespace UbplCommon.Translator
     public abstract class CodeGenerator
     {
         private readonly IList<Code> codeList;
-        private readonly IDictionary<string, int> labels;
+        private readonly IList<JumpLabel> labels;
         private readonly IList<LifemValue> lifemList;
-        private LifemValue lifemTemporary;
 
-        protected static readonly Operand F0 = new Operand(Register.F0);
-        protected static readonly Operand F1 = new Operand(Register.F1);
-        protected static readonly Operand F2 = new Operand(Register.F2);
-        protected static readonly Operand F3 = new Operand(Register.F3);
-        protected static readonly Operand F4 = new Operand(Register.F4);
-        protected static readonly Operand F5 = new Operand(Register.F5);
-        protected static readonly Operand F6 = new Operand(Register.F6);
-        protected static readonly Operand XX = new Operand(Register.XX);
-        protected static readonly Operand UL = new Operand(Register.UL);
+        protected static readonly Operand F0 = new Operand(Register.F0, null, 0U);
+        protected static readonly Operand F1 = new Operand(Register.F1, null, 0U);
+        protected static readonly Operand F2 = new Operand(Register.F2, null, 0U);
+        protected static readonly Operand F3 = new Operand(Register.F3, null, 0U);
+        protected static readonly Operand F4 = new Operand(Register.F4, null, 0U);
+        protected static readonly Operand F5 = new Operand(Register.F5, null, 0U);
+        protected static readonly Operand F6 = new Operand(Register.F6, null, 0U);
+        protected static readonly Operand XX = new Operand(Register.XX, null, 0U);
+        protected static readonly Operand UL = new Operand(Register.UL, null, 0U);
 
         protected static readonly FiType XTLO = new FiType(Mnemonic.XTLO);
         protected static readonly FiType XYLO = new FiType(Mnemonic.XYLO);
@@ -39,9 +38,8 @@ namespace UbplCommon.Translator
         protected CodeGenerator()
         {
             codeList = new List<Code>();
-            labels = new Dictionary<string, int>();
+            labels = new List<JumpLabel>();
             lifemList = new List<LifemValue>();
-            lifemTemporary = null;
         }
 
         protected Operand Seti(Operand opd)
@@ -49,9 +47,9 @@ namespace UbplCommon.Translator
             return opd.ToAddressing();
         }
 
-        protected Operand Seti(string label)
+        protected Operand Seti(JumpLabel label)
         {
-            return new Operand(label, true);
+            return label.ToAddressing();
         }
 
         protected Operand Seti(uint val)
@@ -62,11 +60,6 @@ namespace UbplCommon.Translator
         protected Operand ToOperand(uint val, bool address = false)
         {
             return new Operand(val, address);
-        }
-
-        protected Operand ToOperand(string label, bool address = false)
-        {
-            return new Operand(label, address);
         }
 
         /// <summary>
@@ -88,14 +81,8 @@ namespace UbplCommon.Translator
         public IReadOnlyList<byte> ToBinaryCode()
         {
             List<byte> binaryCode = new List<byte>();
-
-            if (this.lifemTemporary != null)
-            {
-                this.lifemList.Add(this.lifemTemporary);
-                this.lifemTemporary = null;
-            }
-
-            int labelLifemCount = this.lifemList.Where(x => !string.IsNullOrEmpty(x.SourceLabel)).Count();
+            
+            int labelLifemCount = this.lifemList.Where(x => x.SourceLabel != null).Count();
             int count = (this.codeList.Count + labelLifemCount + 1) * 16;
             
             foreach (var lifem in this.lifemList)
@@ -113,7 +100,8 @@ namespace UbplCommon.Translator
                 {
                     foreach(var label in lifem.Labels)
                     {
-                        this.labels.Add(new KeyValuePair<string, int>(label, count));
+                        label.RelativeAddress = (uint)count - 16;
+                        this.labels.Add(label);
                     }
                 }
                 
@@ -153,10 +141,9 @@ namespace UbplCommon.Translator
                     count += 1;
                 }
 
-                if (!string.IsNullOrEmpty(lifem.SourceLabel))
+                if (lifem.SourceLabel != null)
                 {
-                    int position = this.labels.Where(x => x.Key == lifem.SourceLabel)
-                        .Select(x => x.Value).Single();
+                    uint position = this.labels.Where(x => x == lifem.SourceLabel).Single().RelativeAddress;
 
                     switch (lifem.SetType)
                     {
@@ -211,7 +198,7 @@ namespace UbplCommon.Translator
                 }
             }
 
-            count = 0;
+            count = (labelLifemCount + 1) * 16;
             foreach (var code in this.codeList)
             {
                 binaryCode.AddRange(ToBinary((uint)code.Mnemonic));
@@ -224,18 +211,17 @@ namespace UbplCommon.Translator
                     case OperandMode.ADDR_IMM32:
                     case OperandMode.REG32_IMM32:
                     case OperandMode.ADDR_REG32_IMM32:
-                        value = code.Head.Disp.Value;
+                        value = code.Head.Immidiate;
                         break;
                     case OperandMode.XX_IMM32:
                     case OperandMode.XX_REG32_IMM32:
                     case OperandMode.ADDR_XX_IMM32:
                     case OperandMode.ADDR_XX_REG32_IMM32:
-                        value = (uint)(this.labels[code.Head.Label] - (count + 16))
-                            + (code.Head.Disp ?? 0U);
+                        value = (uint)(code.Head.Immidiate - count);
                         break;
                     case OperandMode.REG32_REG32:
                     case OperandMode.ADDR_REG32_REG32:
-                        value = (uint)code.Head.SecondReg.Value;
+                        value = (uint)code.Head.Second;
                         break;
                     default:
                         break;
@@ -249,18 +235,17 @@ namespace UbplCommon.Translator
                     case OperandMode.ADDR_IMM32:
                     case OperandMode.REG32_IMM32:
                     case OperandMode.ADDR_REG32_IMM32:
-                        value = code.Tail.Disp.Value;
+                        value = code.Tail.Immidiate;
                         break;
                     case OperandMode.XX_IMM32:
                     case OperandMode.XX_REG32_IMM32:
                     case OperandMode.ADDR_XX_IMM32:
                     case OperandMode.ADDR_XX_REG32_IMM32:
-                        value = (uint)(this.labels[code.Tail.Label] - (count + 16))
-                            + (code.Head.Disp ?? 0U);
+                        value = (uint)(code.Tail.Immidiate - count);
                         break;
                     case OperandMode.REG32_REG32:
                     case OperandMode.ADDR_REG32_REG32:
-                        value = (uint)code.Tail.SecondReg.Value;
+                        value = (uint)code.Tail.Second;
                         break;
                     default:
                         break;
@@ -270,7 +255,7 @@ namespace UbplCommon.Translator
                 count += 16;
             }
 
-            count = this.codeList.Count * 16;
+            count = 0;
             foreach (var lifem in this.lifemList)
             {
                 var binary = ToBinary(lifem.Value);
@@ -339,16 +324,6 @@ namespace UbplCommon.Translator
 
         private void Append(Mnemonic mne, Operand head, Operand tail)
         {
-            if (this.lifemTemporary != null)
-            {
-                if (this.lifemList.LastOrDefault() != this.lifemTemporary)
-                {
-                    this.lifemList.Add(this.lifemTemporary);
-                }
-
-                this.lifemTemporary = null;
-            }
-
             ModRm modrm = CreateModRm(head, tail);
 
             this.codeList.Add(new Code
@@ -362,7 +337,7 @@ namespace UbplCommon.Translator
 
         private bool IsInvalidOperand(Operand opd)
         {
-            return !opd.IsAddress && (opd.HasSecondReg || opd.IsImm || opd.IsLabel);
+            return !opd.IsAddress && (opd.Second.HasValue || opd.Immidiate != 0|| opd.HasLabel);
         }
 
         private ModRm CreateModRm(Operand head, Operand tail)
@@ -375,35 +350,25 @@ namespace UbplCommon.Translator
 
             (OperandMode, Register) GetValue(Operand value)
             {
-                OperandMode mode = OperandMode.IMM32;
-                Register register = Register.F0;
+                OperandMode mode = value.ValueType;
+                Register register;
+
+                if ((mode & OperandMode.XX_REG32) != 0)
+                {
+                    if(value.First == Register.XX)
+                    {
+                        register = value.Second ?? Register.F0;
+                    }
+                    else
+                    {
+                        register = value.First.Value;
+                    }
+                }
+                else
+                {
+                    register = value.First ?? Register.F0;
+                }
                 
-                if (value.IsReg)
-                {
-                    mode = OperandMode.REG32;
-                    register = value.Reg.Value;
-                }
-                else if (value.IsRegImm)
-                {
-                    mode = OperandMode.REG32_IMM32;
-                    register = value.Reg.Value;
-                }
-                else if (value.HasSecondReg)
-                {
-                    mode = OperandMode.REG32_REG32;
-                    register = value.Reg.Value;
-                }
-
-                if (value.IsLabel)
-                {
-                    mode |= OperandMode.ADD_XX;
-                }
-
-                if (value.IsAddress)
-                {
-                    mode |= OperandMode.ADDRESS;
-                }
-
                 return (mode, register);
             }
         }
@@ -411,38 +376,15 @@ namespace UbplCommon.Translator
         #endregion
 
         #region Operation
-
-        /// <summary>
-        /// 後置ラベルを定義します．
-        /// </summary>
-        /// <param name="name">ラベル名</param>
-        protected void L(string name)
-        {
-            if (this.lifemTemporary != null)
-            {
-                this.lifemTemporary.Labels.Add(name);
-                if(this.lifemTemporary != this.lifemList.LastOrDefault())
-                {
-                    this.lifemList.Add(this.lifemTemporary);
-                }
-            }
-            else if (this.codeList.Any())
-            {
-                this.labels.Add(name, (this.codeList.Count - 1) * 16);
-            }
-            else
-            {
-                throw new ArgumentException("Not found operator");
-            }
-        }
-
+        
         /// <summary>
         /// 前置ラベルを定義します．
         /// </summary>
-        /// <param name="name">ラベル名</param>
-        protected void Nll(string name)
+        /// <param name="label">ラベル</param>
+        protected void Nll(JumpLabel label)
         {
-            this.labels.Add(name, this.codeList.Count * 16);
+            label.RelativeAddress = (uint)(this.codeList.Count * 16);
+            this.labels.Add(label);
         }
 
         /// <summary>
@@ -451,7 +393,7 @@ namespace UbplCommon.Translator
         /// <param name="value"></param>
         protected void Lifem(uint value)
         {
-            Lifem(this.lifemTemporary = new LifemValue
+            Lifem(new LifemValue
             {
                 SetType = Mnemonic.KRZ,
                 Value = value,
@@ -462,7 +404,7 @@ namespace UbplCommon.Translator
         /// ラベル先のアドレスを定数として定義します．
         /// </summary>
         /// <param name="value"></param>
-        protected void Lifem(string label)
+        protected void Lifem(JumpLabel label)
         {
             Lifem(new LifemValue
             {
@@ -487,8 +429,8 @@ namespace UbplCommon.Translator
         /// <summary>
         /// ラベル先のアドレスを定数として定義します．
         /// </summary>
-        /// <param name="value"></param>
-        protected void Lifem8(string label)
+        /// <param name="label"></param>
+        protected void Lifem8(JumpLabel label)
         {
             Lifem(new LifemValue
             {
@@ -513,8 +455,8 @@ namespace UbplCommon.Translator
         /// <summary>
         /// ラベル先のアドレスを定数として定義します．
         /// </summary>
-        /// <param name="value"></param>
-        protected void Lifem16(string label)
+        /// <param name="label"></param>
+        protected void Lifem16(JumpLabel label)
         {
             Lifem(new LifemValue
             {
@@ -529,20 +471,18 @@ namespace UbplCommon.Translator
         /// <param name="value"></param>
         private void Lifem(LifemValue lifem)
         {
-            this.lifemTemporary = lifem;
-            var labels = this.labels.Where(x => x.Value == this.codeList.Count * 16)
-                .Select(x => x.Key).ToList();
+            var labels = this.labels.Where(x => x.RelativeAddress == this.codeList.Count * 16).ToList();
 
             if (labels.Any())
             {
-                labels.ForEach(x =>
+                foreach (var label in labels)
                 {
-                    this.lifemTemporary.Labels.Add(x);
-                    this.labels.Remove(x);
-                });
+                    lifem.Labels.Add(label);
+                    this.labels.Remove(label);
+                }
             }
 
-            this.lifemList.Add(this.lifemTemporary);
+            this.lifemList.Add(lifem);
         }
 
         /// <summary>
@@ -746,17 +686,7 @@ namespace UbplCommon.Translator
         {
             Krz(new Operand(val), opd);
         }
-
-        /// <summary>
-        /// krzを表すメソッドです．
-        /// </summary>
-        /// <param name="name">ジャンプラベル</param>
-        /// <param name="opd">オペランド</param>
-        protected void Krz(string name, Operand opd)
-        {
-            Krz(new Operand(name, true), opd);
-        }
-
+        
         /// <summary>
         /// krzを表すメソッドです．
         /// </summary>
@@ -780,17 +710,7 @@ namespace UbplCommon.Translator
         {
             Malkrz(new Operand(val), opd);
         }
-
-        /// <summary>
-        /// malkrzを表すメソッドです．
-        /// </summary>
-        /// <param name="name">ジャンプラベル</param>
-        /// <param name="opd">オペランド</param>
-        protected void Malkrz(string name, Operand opd)
-        {
-            Malkrz(new Operand(name, true), opd);
-        }
-
+        
         /// <summary>
         /// malkrzを表すメソッドです．
         /// </summary>
@@ -814,17 +734,7 @@ namespace UbplCommon.Translator
         {
             Krz8i(new Operand(val), opd);
         }
-
-        /// <summary>
-        /// krz8iを表すメソッドです．
-        /// </summary>
-        /// <param name="name">ジャンプラベル</param>
-        /// <param name="opd">オペランド</param>
-        protected void Krz8i(string name, Operand opd)
-        {
-            Krz8i(new Operand(name, true), opd);
-        }
-
+        
         /// <summary>
         /// krz8iを表すメソッドです．
         /// </summary>
@@ -848,17 +758,7 @@ namespace UbplCommon.Translator
         {
             Krz16i(new Operand(val), opd);
         }
-
-        /// <summary>
-        /// krz16iを表すメソッドです．
-        /// </summary>
-        /// <param name="name">ジャンプラベル</param>
-        /// <param name="opd">オペランド</param>
-        protected void Krz16i(string name, Operand opd)
-        {
-            Krz16i(new Operand(name, true), opd);
-        }
-
+        
         /// <summary>
         /// krz16iを表すメソッドです．
         /// </summary>
@@ -881,17 +781,7 @@ namespace UbplCommon.Translator
         {
             Krz8c(new Operand(val), opd);
         }
-
-        /// <summary>
-        /// krz8cを表すメソッドです．
-        /// </summary>
-        /// <param name="name">ジャンプラベル</param>
-        /// <param name="opd">オペランド</param>
-        protected void Krz8c(string name, Operand opd)
-        {
-            Krz8c(new Operand(name, true), opd);
-        }
-
+        
         /// <summary>
         /// krz8cを表すメソッドです．
         /// </summary>
@@ -915,17 +805,6 @@ namespace UbplCommon.Translator
         {
             Krz16c(new Operand(val), opd);
         }
-
-        /// <summary>
-        /// krz16cを表すメソッドです．
-        /// </summary>
-        /// <param name="name">ジャンプラベル</param>
-        /// <param name="opd">オペランド</param>
-        protected void Krz16c(string name, Operand opd)
-        {
-            Krz16c(new Operand(name, true), opd);
-        }
-
         /// <summary>
         /// krz16cを表すメソッドです．
         /// </summary>
@@ -978,17 +857,7 @@ namespace UbplCommon.Translator
         {
             Fnx(new Operand(val), opd);
         }
-
-        /// <summary>
-        /// fnxを表すメソッドです．
-        /// </summary>
-        /// <param name="name">ジャンプラベル</param>
-        /// <param name="opd">オペランド</param>
-        protected void Fnx(string name, Operand opd)
-        {
-            Fnx(new Operand(name, true), opd);
-        }
-
+        
         /// <summary>
         /// fnxを表すメソッドです．
         /// </summary>
@@ -1018,47 +887,7 @@ namespace UbplCommon.Translator
         {
             Mte(new Operand(val1), new Operand(val2));
         }
-
-        /// <summary>
-        /// mteを表すメソッドです．
-        /// </summary>
-        /// <param name="val">即値</param>
-        /// <param name="name">即値</param>
-        protected void Mte(uint val, string name)
-        {
-            Mte(new Operand(val), new Operand(name, true));
-        }
-
-        /// <summary>
-        /// mteを表すメソッドです．
-        /// </summary>
-        /// <param name="name">ジャンプラベル</param>
-        /// <param name="opd">オペランド</param>
-        protected void Mte(string name, Operand opd)
-        {
-            Mte(new Operand(name, true), opd);
-        }
-
-        /// <summary>
-        /// mteを表すメソッドです．
-        /// </summary>
-        /// <param name="name">ジャンプラベル</param>
-        /// <param name="val">即値</param>
-        protected void Mte(string name, uint val)
-        {
-            Mte(new Operand(name, true), new Operand(val));
-        }
-
-        /// <summary>
-        /// mteを表すメソッドです．
-        /// </summary>
-        /// <param name="name1">ジャンプラベル</param>
-        /// <param name="name2">ジャンプラベル</param>
-        protected void Mte(string name1, string name2)
-        {
-            Mte(new Operand(name1, true), new Operand(name2, true));
-        }
-
+        
         /// <summary>
         /// mteを表すメソッドです．
         /// </summary>
@@ -1068,17 +897,7 @@ namespace UbplCommon.Translator
         {
             Mte(opd, new Operand(val));
         }
-
-        /// <summary>
-        /// mteを表すメソッドです．
-        /// </summary>
-        /// <param name="opd">オペランド</param>
-        /// <param name="name">ジャンプラベル</param>
-        protected void Mte(Operand opd, string name)
-        {
-            Mte(opd, new Operand(name, true));
-        }
-
+        
         /// <summary>
         /// mteを表すメソッドです．
         /// </summary>
@@ -1166,6 +985,11 @@ namespace UbplCommon.Translator
         protected void Latsna(Operand opd1, Operand opd2)
         {
             Append(Mnemonic.LATSNA, opd1, opd2);
+        }
+
+        protected void Klon(uint val, Operand opd)
+        {
+            Klon(new Operand(val), opd);
         }
 
         protected void Klon(Operand opd1, Operand opd2)

@@ -8,143 +8,216 @@ namespace UbplCommon.Translator
 {
     public class Operand
     {
-        public Register? Reg { get; }
-        public Register? SecondReg { get; }
-        public uint? Disp { get; }
-        public string Label { get; }
+        protected Register?[] registers;
+        protected LabelAddress[] labelAddresses;
+        protected uint immidiate;
+        
+        private Operand(Register?[] registers, LabelAddress[] labelAddresses, uint immidiate, bool isAddress)
+        {
+            this.registers = registers ?? new Register?[2];
+            this.labelAddresses = labelAddresses ?? new LabelAddress[2];
+            this.immidiate = immidiate;
+            this.IsAddress = isAddress;
+        }
+
+        internal Operand(uint immidiate, bool isAddress = false)
+            : this(null, null, immidiate, isAddress) { }
+        
+        internal Operand(Register reg0, LabelAddress label0, uint immidiate, bool isAddress = false)
+            : this(new Register?[] { reg0, null }, new LabelAddress[] { label0, null }, immidiate, isAddress) { }
+        
+        internal Operand(Register reg0, LabelAddress label0, Register reg1, LabelAddress label1 , bool isAddress = false)
+            : this(new Register?[] { reg0, reg1 }, new LabelAddress[] { label0, label1 }, 0, isAddress) { }
+        
+        public Register? First
+        {
+            get
+            {
+                if(this.registers[0].HasValue)
+                {
+                    return this.registers[0];
+                }
+                else
+                {
+                    return null;
+                }
+            }
+        }
+
+        public Register? Second
+        {
+            get
+            {
+                if (this.registers[1].HasValue)
+                {
+                    return this.registers[1];
+                }
+                else
+                {
+                    return null;
+                }
+            }
+        }
+
+        public uint Immidiate
+        {
+            get
+            {
+                return this.immidiate + this.labelAddresses.Where(x => x != null).Aggregate(0U, (acc, x) => acc + x.Value);
+            }
+        }
+
         public bool IsAddress { get; }
-
-        Operand(Register? reg, Register? second, uint? val, string label, bool address = false)
+        public bool HasLabel
         {
-            this.Reg = reg;
-            this.SecondReg = second;
-            this.Disp = val;
-            this.IsAddress = address;
-            this.Label = label;
+            get => this.labelAddresses.Any(x => x != null);
         }
 
-        public bool IsImm
+        public bool IsFirstLabel
         {
-            get => !Reg.HasValue && !SecondReg.HasValue
-                && Disp.HasValue;
+            get => this.labelAddresses[0] != null;
         }
 
-        public bool IsReg
+        public bool IsSecondLabel
         {
-            get => Reg.HasValue && !SecondReg.HasValue
-                && !Disp.HasValue;
+            get => this.labelAddresses[1] != null;
         }
 
-        public bool IsLabel
+        public Operand ToAddressing()
         {
-            get => !string.IsNullOrEmpty(Label);
+            return new Operand(this.registers, this.labelAddresses, this.immidiate, true);
         }
 
-        public bool IsRegImm
+        public OperandMode ValueType
         {
-            get => Reg.HasValue && !SecondReg.HasValue
-                && Disp.HasValue;
+            get
+            {
+                var mode = OperandMode.REG32;
+                
+                bool register0 = this.registers[0] == Register.XX;
+                bool register1 = this.registers[1] == Register.XX;
+
+                bool has0 = this.registers[0].HasValue;
+                bool has1 = this.registers[1].HasValue;
+
+                if (register0)
+                {
+                    if (has1)
+                    {
+                        mode |= OperandMode.XX_REG32_IMM32;
+                    }
+                    else if (this.labelAddresses[0] != null)
+                    {
+                        mode |= OperandMode.XX_IMM32;
+                    }
+                }
+                else if (register1)
+                {
+                    if (has0)
+                    {
+                        mode |= OperandMode.XX_REG32_IMM32;
+                    }
+                    else if (this.labelAddresses[1] != null)
+                    {
+                        mode |= OperandMode.XX_IMM32;
+                    }
+                }
+                else if (has0 && has1)
+                {
+                    mode |= OperandMode.REG32_REG32;
+                }
+                else if (has0 || has1)
+                {
+                    if (this.immidiate != 0)
+                    {
+                        mode |= OperandMode.REG32_IMM32;
+                    }
+                }
+                else
+                {
+                    mode = OperandMode.IMM32;
+                }
+
+                if(this.IsAddress)
+                {
+                    mode |= OperandMode.ADDRESS;
+                }
+
+                return mode;
+            }
+        }
+
+        public static Operand operator +(Operand left, uint right)
+        {
+            return left + new Operand(right);
         }
         
-        public bool HasSecondReg
+        public static Operand operator +(uint left, Operand right)
         {
-            get => Reg.HasValue && SecondReg.HasValue
-                && !Disp.HasValue && string.IsNullOrEmpty(Label);
+            return new Operand(left) + right;
         }
-
-        internal Operand(uint val, bool address = false) : this(null, null, val, null, address) { }
-        internal Operand(Register reg, bool address = false) : this(reg, null, null, null, address) { }
-        internal Operand(Register reg, uint val, bool address = false) : this(reg, null, val, null, address) { }
-        internal Operand(Register reg, Register second, bool address = false) : this(reg, second, null, null, address) { }
-        internal Operand(string label, bool address) : this(null, null, null, label, address) { }
-
-        internal Operand ToAddressing()
-        {
-            if (this.IsAddress)
-            {
-                throw new InvalidOperationException();
-            }
-            
-            return new Operand(this.Reg, this.SecondReg, this.Disp, this.Label, true);
-        }
-
+        
         public static Operand operator +(Operand left, Operand right)
         {
-            if (left.IsAddress || right.IsAddress)
+            if(left.IsAddress || right.IsAddress)
             {
-                throw new ArgumentException($"Not supported : 'a@ + b@' ({left} + {right})");
+                throw new ArgumentException($"Not supported : 'left@ + right@' ({left}+{right})");
             }
 
-            if (((left.IsReg || left.IsLabel) && right.HasSecondReg)
-                || (left.HasSecondReg && (right.IsReg || right.IsLabel)))
+            int registerCount = left.registers.Count(x => x.HasValue) + right.registers.Count(x => x.HasValue);
+            if (registerCount > 2)
             {
-                throw new ArgumentException($"Not supported : 'reg1 + reg2 + reg3/label' ({left} + {right})");
+                throw new ArgumentException($"Not supported : reg/label's count is more than 2 ({left} + {right})");
             }
 
-            if ((left.IsReg && left.IsLabel && right.IsReg)
-                || (left.IsReg && right.IsReg && right.IsLabel))
+            if (registerCount == 2 && (left.labelAddresses.All(x => x == null) && right.labelAddresses.All(x => x == null))
+                && (left.immidiate + right.immidiate != 0))
             {
-                throw new ArgumentException($"Not supported : 'reg1 + reg2 + reg3/label' ({left} + {right})");
-            }
-            
-            if (left.IsLabel && right.IsLabel)
-            {
-                throw new ArgumentException($"Not supported : 'label + label' ({left} + {right})");
+                throw new ArgumentException($"Not supported : 'reg + reg + imm' ({left}+{right})");
             }
 
-            uint value = (left.Disp ?? 0) + (right.Disp ?? 0);
-            string label = left.Label ?? right.Label;
-            Register? reg = left.Reg ?? right.Reg;
-            Register? second = left.Reg.HasValue ? right.Reg : null;
+            (Register? register, LabelAddress labelAddress)[] ps = new (Register? register, LabelAddress labelAddress)[4];
 
-            return new Operand(reg, second, value == 0 ? (uint?)null : value, label, false);
-        }
+            ps[0] = (left.registers[0], left.labelAddresses[0]);
+            ps[1] = (left.registers[1], left.labelAddresses[1]);
+            ps[2] = (right.registers[0], right.labelAddresses[0]);
+            ps[3] = (right.registers[1], right.labelAddresses[1]);
 
-        public static Operand operator+(Operand left, uint disp) {
-            return left + new Operand(disp);
-        }
+            Register?[] registers = new Register?[2];
+            LabelAddress[] labelAddresses = new LabelAddress[2];
+            uint immidiate = left.immidiate + right.immidiate;
 
-        public static Operand operator+(uint disp, Operand right)
-        {
-            return new Operand(disp) + right;
-        }
+            for (int i = 0, count = 0; i < ps.Length; i++)
+            {
+                if(ps[i].register.HasValue)
+                {
+                    registers[count] = ps[i].register;
+                    labelAddresses[count] = ps[i].labelAddress;
+                    count++;
 
-        public static Operand operator+(Operand left, string label)
-        {
-            return left + new Operand(label, false);
-        }
+                    if(count >= 2)
+                    {
+                        break;
+                    }
+                }
+            }
 
-        public static Operand operator+(string label, Operand right)
-        {
-            return new Operand(label, false) + right;
+            return new Operand(registers, labelAddresses, immidiate, false);
         }
 
         public override string ToString()
         {
             List<string> list = new List<string>();
-            
-            if (this.Reg.HasValue)
+
+            list.AddRange(this.registers.Where(x => x.HasValue).Select(x => x.ToString()));
+
+            uint immidiate = this.Immidiate;
+            if (immidiate != 0 || !this.registers.Any(x => x.HasValue))
             {
-                list.Add(this.Reg.Value.ToString());
+                list.Add(immidiate.ToString());
             }
 
-            if (this.HasSecondReg)
-            {
-                list.Add(this.SecondReg.Value.ToString());
-            }
-
-            if (this.IsLabel)
-            {
-                list.Add(this.Label);
-            }
-
-            if (this.IsImm)
-            {
-                list.Add(this.Disp.Value.ToString());
-            }
-
-
-            if (IsAddress)
+            if (this.IsAddress)
             {
                 return string.Join("+", list) + "@";
             }
@@ -153,30 +226,24 @@ namespace UbplCommon.Translator
                 return string.Join("+", list);
             }
         }
+    }
 
-        public override bool Equals(object obj)
+    public class JumpLabel : Operand
+    {
+        public JumpLabel() : base(Register.XX, new LabelAddress(), 0U) { }
+
+        public uint RelativeAddress
         {
-            if(obj is Operand)
+            get => this.labelAddresses[0].Value;
+            set
             {
-                Operand opd = obj as Operand;
-
-                return this.Reg == opd.Reg && this.SecondReg == opd.SecondReg
-                    && this.Disp == opd.Disp && this.Label == opd.Label;
-            }
-            else
-            {
-                return false;
+                this.labelAddresses[0].Value = value;
             }
         }
 
-        public override int GetHashCode()
+        public override string ToString()
         {
-            var hashCode = 1546192730;
-            hashCode = hashCode * -1521134295 + EqualityComparer<Register?>.Default.GetHashCode(Reg);
-            hashCode = hashCode * -1521134295 + EqualityComparer<Register?>.Default.GetHashCode(SecondReg);
-            hashCode = hashCode * -1521134295 + EqualityComparer<uint?>.Default.GetHashCode(Disp);
-            hashCode = hashCode * -1521134295 + EqualityComparer<string>.Default.GetHashCode(Label);
-            return hashCode;
+            return $"JumpLabel@{this.GetHashCode()}";
         }
     }
 }
