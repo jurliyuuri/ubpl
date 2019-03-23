@@ -169,14 +169,6 @@ namespace UbplCommon.Processor
             {
                 while (this.registers[Register.XX] != returnAddress)
                 {
-                    if (this.registers[Register.XX] == UbplConstant.TVARLON_KNLOAN_ADDRESS)
-                    {
-                        debugBuffer.Add(this.memory[this.registers[Register.F5] + 4].ToString());
-                        this.registers[Register.XX] = this.memory[this.registers[Register.F5]];
-
-                        continue;
-                    }
-
                     Mnemonic code = (Mnemonic)this.memory[this.registers[Register.XX]];
                     //Console.WriteLine("nx = {0:X08}, code = {1:X08}", this.registers[Register.XX], code);
 
@@ -299,12 +291,9 @@ namespace UbplCommon.Processor
 
                 if (ViewRegister)
                 {
-                    for (int i = 0; i < this.registers.Count; i++)
+                    foreach (var register in this.registers)
                     {
-                        if (this.registers.ContainsKey((Register)i))
-                        {
-                            Console.WriteLine("{0} = {1:X08}", (Register)i, this.registers[(Register)i]);
-                        }
+                        Console.WriteLine("{0} = {1:X08}", register.Key, register.Value);
                     }
                 }
 
@@ -1002,6 +991,12 @@ namespace UbplCommon.Processor
                         uint tailValue = GetValue8(modrm.ModeTail, modrm.RegTail, tail);
                         char c = CharacterCode.ToChar(tailValue);
                         Console.Write(c == '\n' ? Environment.NewLine : c.ToString());
+                    }
+                    break;
+                case 0xFF:
+                    {
+                        uint tailValue = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
+                        debugBuffer.Add(tailValue.ToString());
                     }
                     break;
                 default:

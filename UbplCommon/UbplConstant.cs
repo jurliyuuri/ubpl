@@ -27,11 +27,5 @@ namespace UbplCommon
         /// アプリケーションのリターンアドレス
         /// </summary>
         public static readonly uint DEFAULT_RETURN_ADDRESS = 0xBDA574B8U;
-
-        /// <summary>
-        /// デバッグ用出力アドレス
-        /// </summary>
-        public static readonly uint TVARLON_KNLOAN_ADDRESS = 3126834864;
-
     }
 }

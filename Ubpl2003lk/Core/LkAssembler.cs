@@ -14,6 +14,11 @@ namespace Ubpl2003lk.Core
     {
         #region Constant
 
+        /// <summary>
+        /// デバッグ用出力アドレス
+        /// </summary>
+        const uint TVARLON_KNLOAN_ADDRESS = 3126834864;
+
         private const string FASAL_LABEL_NAME = "@fasal";
 
         private static readonly JumpLabel FASAL_LABEL;
@@ -700,7 +705,16 @@ namespace Ubpl2003lk.Core
                         if (!code.Middle.HasLabel && !code.Middle.IsAddress
                             && code.Middle.First == Register.XX && code.Middle.Second == null && code.Middle.Immidiate == 0)
                         {
-                            Fnx(code.Head, code.Tail);
+                            if(!code.Head.IsAddress && !code.Head.HasLabel && code.Head.Immidiate == TVARLON_KNLOAN_ADDRESS)
+                            {
+                                Krz(Seti(F5 + 4), UL);
+                                Klon(0xFF, UL);
+                                Krz(code.Middle, code.Tail);
+                            }
+                            else
+                            {
+                                Fnx(code.Head, code.Tail);
+                            }
                         }
                         else if ((code.Head.IsAddress && (code.Head.First == Register.UL || code.Head.Second == Register.UL))
                             || (code.Middle.IsAddress && (code.Middle.First == Register.UL || code.Middle.Second == Register.UL)))
