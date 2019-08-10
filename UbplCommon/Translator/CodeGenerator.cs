@@ -825,7 +825,7 @@ namespace UbplCommon.Translator
         /// <param name="opd">オペランド</param>
         protected void Fi(uint val, Operand opd, FiType f)
         {
-            Append(f.mne, new Operand(val), opd);
+            Fi(new Operand(val), opd, f);
         }
 
         /// <summary>

@@ -92,8 +92,8 @@ namespace UbplCommon
             code['o'] = 0x3B;
             code['e'] = 0x3C;
             code['a'] = 0x3D;
-            code['U'] = 0x3E;
-            code['Y'] = 0x3F;
+            code['Y'] = 0x3E;
+            code['U'] = 0x3F;
             code['E'] = 0x40;
         }
 
@@ -116,7 +116,7 @@ namespace UbplCommon
             code['\"'] = 0x0E;
             code['\''] = 0x0F;
 
-            code['$'] = 0x1A;
+            code['_'] = 0x1A;
             code['\\'] = 0x1B;
             code['-'] = 0x1C;
             code[':'] = 0x1D;
@@ -125,7 +125,6 @@ namespace UbplCommon
 
             code[','] = 0x41;
             code['.'] = 0x42;
-            code['_'] = 0x43;
 
             code['\0'] = 0xFF;
         }
