@@ -4,152 +4,192 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace UbplCommon
+namespace Ubpllk.Core
 {
     /// <summary>
     /// 命令の種類を表す列挙体です．
     /// </summary>
-    public enum Mnemonic : uint
+    public enum LkMnemonic : uint
     {
         /// <summary>
         /// 加算
         /// </summary>
-        ATA = 0x00000000,
+        ATA,
 
         /// <summary>
         /// 減算
         /// </summary>
-        NTA = 0x00000001,
+        NTA,
 
         /// <summary>
         /// ビット積
         /// </summary>
-        ADA = 0x00000002,
+        ADA,
 
         /// <summary>
         /// ビット和
         /// </summary>
-        EKC = 0x00000003,
+        EKC,
 
         /// <summary>
         /// 論理右シフト
         /// </summary>
-        DTO = 0x00000004,
+        DTO,
 
         /// <summary>
         /// 左シフト
         /// </summary>
-        DRO = 0x00000005,
+        DRO,
 
         /// <summary>
         /// 算術右シフト
         /// </summary>
-        DTOSNA = 0x00000006,
+        DTOSNA,
 
         /// <summary>
         /// ビットxnor
         /// </summary>
-        DAL = 0x00000007,
+        DAL,
 
         /// <summary>
         /// コピー
         /// </summary>
-        KRZ = 0x00000008,
+        KRZ,
 
         /// <summary>
         /// フラグが立っているときのみkrzを行う
         /// </summary>
-        MALKRZ = 0x00000009,
+        MALKRZ,
 
         /// <summary>
         /// 第一オペランドの上位8bitを32bit符号拡張してkrzを行う
         /// </summary>
-        KRZ8I = 0x0000000A,
+        KRZ8I,
 
         /// <summary>
         /// 第一オペランドの上位16bitを32bit符号拡張してkrzを行う
         /// </summary>
-        KRZ16I = 0x0000000B,
+        KRZ16I,
 
         /// <summary>
         /// 第一オペランドの下位8bit取得し，第二オペランドの上位8bitに設定する
         /// </summary>
-        KRZ8C = 0x0000000C,
+        KRZ8C,
 
         /// <summary>
         /// 第一オペランドの下位16bit取得し，第二オペランドの上位16bitに設定する
         /// </summary>
-        KRZ16C = 0x0000000D,
+        KRZ16C,
 
         /// <summary>
         /// krz64 head &lt;&lt; 32 | tail tmp と同等
         /// </summary>
-        MTE = 0x0000000E,
+        MTE,
 
         /// <summary>
         /// krz ((tmp &gt;&gt; 32) &amp; 0x0000FFFF) head, krz (tmp &amp; 0x0000FFFF) tailと同等
         /// </summary>
-        ANF = 0x0000000F,
+        ANF,
 
         /// <summary>
-        /// 同等ならフラグを立てる
+        /// 超過ならフラグを立てる(符号無し比較)
         /// </summary>
-        CLO = 0x00000010,
-
-        /// <summary>
-        /// 等しくないならフラグを立てる
-        /// </summary>
-        NIV = 0x00000011,
+        LLONYS,
 
         /// <summary>
         /// 以下ならフラグを立てる(符号無し比較)
         /// </summary>
-        XTLONYS = 0x00000012,
+        XTLONYS,
+
+        /// <summary>
+        /// 以上ならフラグを立てる(符号無し比較)
+        /// </summary>
+        XOLONYS,
 
         /// <summary>
         /// 未満ならフラグを立てる(符号無し比較)
         /// </summary>
-        XYLONYS = 0x00000013,
+        XYLONYS,
+
+        /// <summary>
+        /// 同等ならフラグを立てる
+        /// </summary>
+        CLO,
+
+        /// <summary>
+        /// 等しくないならフラグを立てる(符号付き比較)
+        /// </summary>
+        NIV,
+
+        /// <summary>
+        /// 超過ならフラグを立てる(符号付き比較)
+        /// </summary>
+        LLO,
 
         /// <summary>
         /// 以下ならフラグを立てる(符号付き比較)
         /// </summary>
-        XTLO = 0x00000014,
+        XTLO,
+
+        /// <summary>
+        /// 以上ならフラグを立てる(符号付き比較)
+        /// </summary>
+        XOLO,
 
         /// <summary>
         /// 未満ならフラグを立てる(符号付き比較)
         /// </summary>
-        XYLO = 0x00000015,
-
-        /// <summary>
-        /// 符号無し乗算
-        /// </summary>
-        LAT = 0x00000016,
-
-        /// <summary>
-        /// 符号付き乗算
-        /// </summary>
-        LATSNA = 0x00000017,
-
-        /// <summary>
-        /// 符号無し除算
-        /// </summary>
-        KAK = 0x00000018,
-
-        /// <summary>
-        /// 符号付き除算
-        /// </summary>
-        KAKSNA = 0x00000019,
+        XYLO,
 
         /// <summary>
         /// 関数等呼び出し．
         /// inj A xx Bと同等
         /// </summary>
-        FNX = 0x00000020,
-        
+        FNX,
+
+        /// <summary>
+        /// 符号無し乗算
+        /// </summary>
+        LAT,
+
+        /// <summary>
+        /// 符号付き乗算
+        /// </summary>
+        LATSNA,
+
+        /// <summary>
+        /// 符号無し除算
+        /// </summary>
+        KAK,
+
+        /// <summary>
+        /// 符号付き除算
+        /// </summary>
+        KAKSNA,
+
+        /// <summary>
+        /// 前置ラベル
+        /// </summary>
+        NLL,
+
+        /// <summary>
+        /// 定数定義 32bit
+        /// </summary>
+        LIFEM,
+
+        /// <summary>
+        /// 定数定義 8bit
+        /// </summary>
+        LIFEM8,
+
+        /// <summary>
+        /// 定数定義 16bit
+        /// </summary>
+        LIFEM16,
+
         /// <summary>
         /// I/O命令
         /// </summary>
-        KLON = 0x00000040,
+        KLON,
     }
 }

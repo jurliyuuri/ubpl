@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Ubpl2003lk.Core;
+using Ubpllk.Core;
 
-namespace Ubpl2003lk
+namespace Ubpllk
 {
     class Program
     {

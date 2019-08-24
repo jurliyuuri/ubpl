@@ -637,7 +637,7 @@ namespace UbplCommon.Processor
             }
             else
             {
-                value = tail >> headValue;
+                value = tailValue >> headValue;
             }
 
             SetValue32(modrm.ModeTail, modrm.RegTail, tail, value);
@@ -658,14 +658,14 @@ namespace UbplCommon.Processor
             }
             else
             {
-                value = tail << headValue;
+                value = tailValue << headValue;
             }
 
             SetValue32(modrm.ModeTail, modrm.RegTail, tail, value);
         }
 
         /// <summary>
-        /// drosnaの処理を行います．
+        /// dtosnaの処理を行います．
         /// </summary>
         void Dtosna(ModRm modrm, uint head, uint tail)
         {
@@ -675,11 +675,11 @@ namespace UbplCommon.Processor
 
             if (headValue >= 32)
             {
-                value = (uint)((int)tail >> 31);
+                value = (uint)((int)tailValue >> 31);
             }
             else
             {
-                value = (uint)((int)tail >> headValue);
+                value = (uint)((int)tailValue >> headValue);
             }
 
             SetValue32(modrm.ModeTail, modrm.RegTail, tail, value);
@@ -887,7 +887,16 @@ namespace UbplCommon.Processor
         /// </summary>
         void Kak(ModRm modrm, uint head, uint tail)
         {
-            throw new NotSupportedException("Not supported 'kak'");
+            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
+            try
+            {
+                this.temporary = ((this.temporary % headValue) << 32) | (this.temporary / headValue);
+                SetValue32(modrm.ModeTail, modrm.RegTail, tail, 0);
+            }
+            catch (ArithmeticException)
+            {
+                SetValue32(modrm.ModeTail, modrm.RegTail, tail, 1);
+            }
         }
 
         /// <summary>
@@ -895,7 +904,18 @@ namespace UbplCommon.Processor
         /// </summary>
         void Kaksna(ModRm modrm, uint head, uint tail)
         {
-            throw new NotSupportedException("Not supported 'kaksna'");
+            int headValue = (int)GetValue32(modrm.ModeHead, modrm.RegHead, head);
+            try
+            {
+                ulong div = (ulong)((long)this.temporary / headValue);
+                ulong rem = (ulong)((long)this.temporary % headValue);
+                this.temporary = (rem << 32) | div;
+                SetValue32(modrm.ModeTail, modrm.RegTail, tail, 0);
+            }
+            catch (ArithmeticException)
+            {
+                SetValue32(modrm.ModeTail, modrm.RegTail, tail, 1);
+            }
         }
 
         /// <summary>

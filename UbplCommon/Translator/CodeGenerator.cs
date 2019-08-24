@@ -988,6 +988,16 @@ namespace UbplCommon.Translator
         /// <summary>
         /// latを表すメソッドです．
         /// </summary>
+        /// <param name="val1">即値</param>
+        /// <param name="val2">即値</param>
+        protected void Lat(uint val1, uint val2)
+        {
+            Lat(new Operand(val1), new Operand(val2));
+        }
+
+        /// <summary>
+        /// latを表すメソッドです．
+        /// </summary>
         /// <param name="val">即値</param>
         /// <param name="opd">オペランド</param>
         protected void Lat(uint val, Operand opd)
@@ -1018,6 +1028,16 @@ namespace UbplCommon.Translator
         /// <summary>
         /// latsnaを表すメソッドです．
         /// </summary>
+        /// <param name="val1">即値</param>
+        /// <param name="val2">即値</param>
+        protected void Latsna(uint val1, uint val2)
+        {
+            Latsna(new Operand(val1), new Operand(val2));
+        }
+
+        /// <summary>
+        /// latsnaを表すメソッドです．
+        /// </summary>
         /// <param name="val">即値</param>
         /// <param name="opd">オペランド</param>
         protected void Latsna(Operand opd, uint val)
@@ -1043,6 +1063,46 @@ namespace UbplCommon.Translator
         protected void Latsna(Operand opd1, Operand opd2)
         {
             Append(Mnemonic.LATSNA, opd1, opd2);
+        }
+
+        /// <summary>
+        /// kakを表すメソッドです．
+        /// </summary>
+        /// <param name="val">即値</param>
+        /// <param name="opd">オペランド</param>
+        protected void Kak(uint val, Operand opd)
+        {
+            Kak(new Operand(val), opd);
+        }
+
+        /// <summary>
+        /// kakを表すメソッドです．
+        /// </summary>
+        /// <param name="opd1">オペランド</param>
+        /// <param name="opd2">オペランド</param>
+        protected void Kak(Operand opd1, Operand opd2)
+        {
+            Append(Mnemonic.KAK, opd1, opd2);
+        }
+
+        /// <summary>
+        /// kaksnaを表すメソッドです．
+        /// </summary>
+        /// <param name="val">即値</param>
+        /// <param name="opd">オペランド</param>
+        protected void Kaksna(uint val, Operand opd)
+        {
+            Kaksna(new Operand(val), opd);
+        }
+
+        /// <summary>
+        /// kaksnaを表すメソッドです．
+        /// </summary>
+        /// <param name="opd1">オペランド</param>
+        /// <param name="opd2">オペランド</param>
+        protected void Kaksna(Operand opd1, Operand opd2)
+        {
+            Append(Mnemonic.KAKSNA, opd1, opd2);
         }
 
         protected void Klon(uint val, Operand opd)

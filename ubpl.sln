@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.27004.2006
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29215.179
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UbplCommon", "UbplCommon\UbplCommon.csproj", "{6B4837F8-17F4-4980-A277-3AF65B3D45ED}"
 EndProject
@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ubpldir", "Ubpldir\Ubpldir.
 	ProjectSection(ProjectDependencies) = postProject
 		{6B4837F8-17F4-4980-A277-3AF65B3D45ED} = {6B4837F8-17F4-4980-A277-3AF65B3D45ED}
 	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ubpllk", "Ubpllk\Ubpllk.csproj", "{5CE8C1B9-2CF7-4602-9FD8-CC2376C91DB4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -36,6 +38,10 @@ Global
 		{AF249CE3-B965-400D-8619-7464BF910634}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AF249CE3-B965-400D-8619-7464BF910634}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AF249CE3-B965-400D-8619-7464BF910634}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5CE8C1B9-2CF7-4602-9FD8-CC2376C91DB4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5CE8C1B9-2CF7-4602-9FD8-CC2376C91DB4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5CE8C1B9-2CF7-4602-9FD8-CC2376C91DB4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5CE8C1B9-2CF7-4602-9FD8-CC2376C91DB4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
