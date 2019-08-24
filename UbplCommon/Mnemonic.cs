@@ -64,37 +64,48 @@ namespace UbplCommon
         /// <summary>
         /// 第一オペランドの上位8bitを32bit符号拡張してkrzを行う
         /// </summary>
-        KRZ8I,
+        KRZ8I = 0x0000000A,
 
         /// <summary>
         /// 第一オペランドの上位16bitを32bit符号拡張してkrzを行う
         /// </summary>
-        KRZ16I,
+        KRZ16I = 0x0000000B,
 
         /// <summary>
         /// 第一オペランドの下位8bit取得し，第二オペランドの上位8bitに設定する
         /// </summary>
-        KRZ8C,
+        KRZ8C = 0x0000000C,
 
         /// <summary>
         /// 第一オペランドの下位16bit取得し，第二オペランドの上位16bitに設定する
         /// </summary>
-        KRZ16C,
+        KRZ16C = 0x0000000D,
 
         /// <summary>
-        /// 超過ならフラグを立てる(符号無し比較)
+        /// krz64 head &lt;&lt; 32 | tail tmp と同等
         /// </summary>
-        LLONYS = 0x00000010,
+        MTE = 0x0000000E,
+
+        /// <summary>
+        /// 乗算結果設定
+        /// krz ((tmp >> 32) & 0x0000FFFF) head, krz (tmp & 0x0000FFFF) tailと同等
+        /// </summary>
+        ANF = 0x0000000F,
+
+        /// <summary>
+        /// 同等ならフラグを立てる
+        /// </summary>
+        CLO = 0x00000010,
+
+        /// <summary>
+        /// 等しくないならフラグを立てる
+        /// </summary>
+        NIV = 0x00000011,
 
         /// <summary>
         /// 以下ならフラグを立てる(符号無し比較)
         /// </summary>
-        XTLONYS = 0x00000011,
-
-        /// <summary>
-        /// 以上ならフラグを立てる(符号無し比較)
-        /// </summary>
-        XOLONYS = 0x00000012,
+        XTLONYS = 0x00000012,
 
         /// <summary>
         /// 未満ならフラグを立てる(符号無し比較)
@@ -102,72 +113,41 @@ namespace UbplCommon
         XYLONYS = 0x00000013,
 
         /// <summary>
-        /// 同等ならフラグを立てる
-        /// </summary>
-        CLO = 0x00000016,
-
-        /// <summary>
-        /// 等しくないならフラグを立てる(符号付き比較)
-        /// </summary>
-        NIV = 0x00000017,
-
-        /// <summary>
-        /// 超過ならフラグを立てる(符号付き比較)
-        /// </summary>
-        LLO = 0x00000018,
-
-        /// <summary>
         /// 以下ならフラグを立てる(符号付き比較)
         /// </summary>
-        XTLO = 0x00000019,
-
-        /// <summary>
-        /// 以上ならフラグを立てる(符号付き比較)
-        /// </summary>
-        XOLO = 0x0000001A,
+        XTLO = 0x00000014,
 
         /// <summary>
         /// 未満ならフラグを立てる(符号付き比較)
         /// </summary>
-        XYLO = 0x0000001B,
-        
+        XYLO = 0x00000015,
+
+        /// <summary>
+        /// 符号無し乗算
+        /// </summary>
+        LAT = 0x00000016,
+
+        /// <summary>
+        /// 符号付き乗算
+        /// </summary>
+        LATSNA = 0x00000017,
+
+        /// <summary>
+        /// 符号無し除算
+        /// </summary>
+        KAK = 0x00000018,
+
+        /// <summary>
+        /// 符号付き除算
+        /// </summary>
+        KAKSNA = 0x00000019,
+
         /// <summary>
         /// 関数等呼び出し．
         /// inj A xx Bと同等
         /// </summary>
         FNX = 0x00000020,
         
-        /// <summary>
-        /// krz64 head &lt;&lt; 32 | tail tmp と同等
-        /// </summary>
-        MTE = 0x00000021,
-
-        /// <summary>
-        /// 乗算結果設定
-        /// krz ((tmp >> 32) & 0x0000FFFF) head, krz (tmp & 0x0000FFFF) tailと同等
-        /// </summary>
-        ANF = 0x00000022,
-
-        /// <summary>
-        /// 符号無し乗算
-        /// </summary>
-        LAT = 0x00000028,
-
-        /// <summary>
-        /// 符号付き乗算
-        /// </summary>
-        LATSNA = 0x00000029,
-        
-        /// <summary>
-        /// 符号無し除算
-        /// </summary>
-        KAK = 0x0000002B,
-
-        /// <summary>
-        /// 符号付き除算
-        /// </summary>
-        KAKSNA = 0x0000002C,
-
         /// <summary>
         /// I/O命令
         /// </summary>

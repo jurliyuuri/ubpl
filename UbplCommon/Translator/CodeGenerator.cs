@@ -24,16 +24,16 @@ namespace UbplCommon.Translator
         protected static readonly Operand XX = new Operand(Register.XX, null, 0U);
         protected static readonly Operand UL = new Operand(Register.UL, null, 0U);
 
-        protected static readonly FiType XTLO = new FiType(Mnemonic.XTLO);
-        protected static readonly FiType XYLO = new FiType(Mnemonic.XYLO);
-        protected static readonly FiType CLO = new FiType(Mnemonic.CLO);
-        protected static readonly FiType XOLO = new FiType(Mnemonic.XOLO);
-        protected static readonly FiType LLO = new FiType(Mnemonic.LLO);
-        protected static readonly FiType NIV = new FiType(Mnemonic.NIV);
-        protected static readonly FiType XTLONYS = new FiType(Mnemonic.XTLONYS);
-        protected static readonly FiType XYLONYS = new FiType(Mnemonic.XYLONYS);
-        protected static readonly FiType XOLONYS = new FiType(Mnemonic.XOLONYS);
-        protected static readonly FiType LLONYS = new FiType(Mnemonic.LLONYS);
+        protected static readonly FiType XTLO = FiType.XTLO;
+        protected static readonly FiType XYLO = FiType.XYLO;
+        protected static readonly FiType CLO = FiType.CLO;
+        protected static readonly FiType XOLO = FiType.XOLO;
+        protected static readonly FiType LLO = FiType.LLO;
+        protected static readonly FiType NIV = FiType.NIV;
+        protected static readonly FiType XTLONYS = FiType.XTLONYS;
+        protected static readonly FiType XYLONYS = FiType.XYLONYS;
+        protected static readonly FiType XOLONYS = FiType.XOLONYS;
+        protected static readonly FiType LLONYS = FiType.LLONYS;
 
         protected CodeGenerator()
         {
@@ -845,7 +845,65 @@ namespace UbplCommon.Translator
         /// <param name="opd2">オペランド</param>
         protected void Fi(Operand opd1, Operand opd2, FiType f)
         {
-            Append(f.mne, opd1, opd2);
+            Operand head, tail;
+            Mnemonic mnemonic;
+
+            switch (f)
+            {
+                case FiType.XTLO:
+                    mnemonic = Mnemonic.XTLO;
+                    head = opd1;
+                    tail = opd2;
+                    break;
+                case FiType.XYLO:
+                    mnemonic = Mnemonic.XYLO;
+                    head = opd1;
+                    tail = opd2;
+                    break;
+                case FiType.CLO:
+                    mnemonic = Mnemonic.CLO;
+                    head = opd1;
+                    tail = opd2;
+                    break;
+                case FiType.XOLO:
+                    mnemonic = Mnemonic.XTLO;
+                    head = opd2;
+                    tail = opd1;
+                    break;
+                case FiType.LLO:
+                    mnemonic = Mnemonic.XYLO;
+                    head = opd2;
+                    tail = opd1;
+                    break;
+                case FiType.NIV:
+                    mnemonic = Mnemonic.NIV;
+                    head = opd1;
+                    tail = opd2;
+                    break;
+                case FiType.XTLONYS:
+                    mnemonic = Mnemonic.XTLONYS;
+                    head = opd1;
+                    tail = opd2;
+                    break;
+                case FiType.XYLONYS:
+                    mnemonic = Mnemonic.XYLONYS;
+                    head = opd1;
+                    tail = opd2;
+                    break;
+                case FiType.XOLONYS:
+                    mnemonic = Mnemonic.XTLONYS;
+                    head = opd2;
+                    tail = opd1;
+                    break;
+                case FiType.LLONYS:
+                    mnemonic = Mnemonic.XYLONYS;
+                    head = opd2;
+                    tail = opd1;
+                    break;
+                default:
+                    throw new ArgumentException($"Invalid Operation: {f} count:{this.codeList.Count}");
+            }
+            Append(mnemonic, head, tail);
         }
 
         /// <summary>

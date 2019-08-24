@@ -11,6 +11,6 @@ namespace UbplCommon
         REG = 0x0U,
         XMM = 0x1U,
 
-        BIT64 = 0x8,
+        BIT64 = 0x8U,
     }
 }

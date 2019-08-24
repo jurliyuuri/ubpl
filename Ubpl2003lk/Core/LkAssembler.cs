@@ -707,8 +707,7 @@ namespace Ubpl2003lk.Core
                         {
                             if(!code.Head.IsAddress && !code.Head.HasLabel && code.Head.Immidiate == TVARLON_KNLOAN_ADDRESS)
                             {
-                                Krz(Seti(F5 + 4), UL);
-                                Klon(0xFF, UL);
+                                Klon(0xFF, Seti(F5 + 4));
                                 Krz(code.Middle, code.Tail);
                             }
                             else

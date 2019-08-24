@@ -228,14 +228,8 @@ namespace UbplCommon.Processor
                         case Mnemonic.KRZ16C:
                             Krz16c(modrm, first, second);
                             break;
-                        case Mnemonic.LLONYS:
-                            Llonys(modrm, first, second);
-                            break;
                         case Mnemonic.XTLONYS:
                             Xtlonys(modrm, first, second);
-                            break;
-                        case Mnemonic.XOLONYS:
-                            Xolonys(modrm, first, second);
                             break;
                         case Mnemonic.XYLONYS:
                             Xylonys(modrm, first, second);
@@ -246,14 +240,8 @@ namespace UbplCommon.Processor
                         case Mnemonic.NIV:
                             Niv(modrm, first, second);
                             break;
-                        case Mnemonic.LLO:
-                            Llo(modrm, first, second);
-                            break;
                         case Mnemonic.XTLO:
                             Xtlo(modrm, first, second);
-                            break;
-                        case Mnemonic.XOLO:
-                            Xolo(modrm, first, second);
                             break;
                         case Mnemonic.XYLO:
                             Xylo(modrm, first, second);
@@ -772,17 +760,6 @@ namespace UbplCommon.Processor
         }
 
         /// <summary>
-        /// fi llonysの処理を行います．
-        /// </summary>
-        void Llonys(ModRm modrm, uint head, uint tail)
-        {
-            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
-            uint tailValue = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
-            
-            this.flags = headValue > tailValue;
-        }
-
-        /// <summary>
         /// fi xtlonysの処理を行います．
         /// </summary>
         void Xtlonys(ModRm modrm, uint head, uint tail)
@@ -791,17 +768,6 @@ namespace UbplCommon.Processor
             uint tailValue = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
 
             this.flags = headValue <= tailValue;
-        }
-
-        /// <summary>
-        /// fi xolonysの処理を行います．
-        /// </summary>
-        void Xolonys(ModRm modrm, uint head, uint tail)
-        {
-            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
-            uint tailValue = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
-
-            this.flags = headValue >= tailValue;
         }
 
         /// <summary>
@@ -838,17 +804,6 @@ namespace UbplCommon.Processor
         }
 
         /// <summary>
-        /// lloの処理を行います．
-        /// </summary>
-        void Llo(ModRm modrm, uint head, uint tail)
-        {
-            int headValue = (int)GetValue32(modrm.ModeHead, modrm.RegHead, head);
-            int tailValue = (int)GetValue32(modrm.ModeTail, modrm.RegTail, tail);
-
-            this.flags = headValue > tailValue;
-        }
-
-        /// <summary>
         /// xtloの処理を行います．
         /// </summary>
         void Xtlo(ModRm modrm, uint head, uint tail)
@@ -857,18 +812,6 @@ namespace UbplCommon.Processor
             int tailValue = (int)GetValue32(modrm.ModeTail, modrm.RegTail, tail);
 
             this.flags = headValue <= tailValue;
-        }
-
-        /// <summary>
-        /// xoloの処理を行います．
-        /// </summary>
-        void Xolo(ModRm modrm, uint head, uint tail)
-        {
-            int headValue = (int)GetValue32(modrm.ModeHead, modrm.RegHead, head);
-            int tailValue = (int)GetValue32(modrm.ModeTail, modrm.RegTail, tail);
-
-
-            this.flags = headValue >= tailValue;
         }
 
         /// <summary>

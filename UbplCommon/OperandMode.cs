@@ -8,10 +8,10 @@ namespace UbplCommon
 {
     public enum OperandMode : uint
     {
-        REG32 = 0,
-        IMM32 = 1,
-        REG32_REG32 = 2,
-        REG32_IMM32 = 3,
+        REG32 = 0U,
+        IMM32 = 1U,
+        REG32_REG32 = 2U,
+        REG32_IMM32 = 3U,
 
         XX_REG32 = ADD_XX | REG32,
         XX_IMM32 = ADD_XX | IMM32,
