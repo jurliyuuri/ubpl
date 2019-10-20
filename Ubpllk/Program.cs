@@ -13,7 +13,7 @@ namespace Ubpllk
         {
             if (args.Length < 1)
             {
-                Console.WriteLine("ubpl2003lk.exe fileName... [-o outFileName]");
+                Console.WriteLine("ubpllk.exe fileName... [-o outFileName]");
                 Environment.Exit(0);
             }
 
