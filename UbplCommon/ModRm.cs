@@ -70,5 +70,11 @@ namespace UbplCommon
         {
             get => (this.Value & ((uint)OperandMode.ADDRESS << 8)) != 0;
         }
+
+        public override string ToString()
+        {
+            return $"{{ Head = {{ Mode = {ModeHead}, Type = {TypeHead}, Reg = {RegHead}, IsAddress = {IsAddressHead} }}," +
+                $" Tail = {{ Mode = {ModeTail}, Type = {TypeTail}, Reg = {RegTail}, IsAddress = {IsAddressTail} }} }}";
+        }
     }
 }

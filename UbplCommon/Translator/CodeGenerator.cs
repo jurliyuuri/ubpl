@@ -22,7 +22,6 @@ namespace UbplCommon.Translator
         protected static readonly Operand F5 = new Operand(Register.F5, null, 0U);
         protected static readonly Operand F6 = new Operand(Register.F6, null, 0U);
         protected static readonly Operand XX = new Operand(Register.XX, null, 0U);
-        protected static readonly Operand UL = new Operand(Register.UL, null, 0U);
 
         protected static readonly FiType XTLO = FiType.XTLO;
         protected static readonly FiType XYLO = FiType.XYLO;
@@ -84,6 +83,11 @@ namespace UbplCommon.Translator
             
             int labelLifemCount = this.lifemList.Where(x => x.SourceLabel != null).Count();
             int count = (this.codeList.Count + labelLifemCount + 1) * 16;
+
+            foreach (var label in this.labels)
+            {
+                label.RelativeAddress += (uint)(labelLifemCount * 16);
+            }
             
             foreach (var lifem in this.lifemList)
             {
@@ -121,15 +125,8 @@ namespace UbplCommon.Translator
                 }
             }
 
-            binaryCode.AddRange(new byte[]
-            {
-                0x00, 0x00, 0x00, 0x08,
-                0x03, 0x07, 0x00, 0x0F,
-                0xFF, 0xFF, 0xFF, 0xF0,
-                0x00, 0x00, 0x00, 0x00,
-            });
-
             count = (this.codeList.Count + labelLifemCount + 1) * 16;
+            int codeCount = 0;
             foreach (var lifem in this.lifemList)
             {
                 if (lifem.SetType == Mnemonic.KRZ && (count & 0x3) != 0)
@@ -144,42 +141,26 @@ namespace UbplCommon.Translator
                 if (lifem.SourceLabel != null)
                 {
                     uint position = this.labels.Where(x => x == lifem.SourceLabel).Single().RelativeAddress;
-
-                    switch (lifem.SetType)
+                    Code code = new Code
                     {
-                        case Mnemonic.KRZ8C:
-                            binaryCode.AddRange(new byte[] {
-                                0x00, 0x00, 0x00, 0x0C,
-                                0x03, 0x0F, 0x23, 0x0F,
-                                (byte)(position >> 24),(byte)(position >> 16),
-                                (byte)(position >> 8),(byte)(position),
-                                (byte)(count >> 24),(byte)(count >> 16),
-                                (byte)(count >> 8),(byte)(count),
-                            });
-                            break;
-                        case Mnemonic.KRZ16C:
-                            binaryCode.AddRange(new byte[] {
-                                0x00, 0x00, 0x00, 0x0D,
-                                0x03, 0x0F, 0x23, 0x0F,
-                                (byte)(position >> 24),(byte)(position >> 16),
-                                (byte)(position >> 8),(byte)(position),
-                                (byte)(count >> 24),(byte)(count >> 16),
-                                (byte)(count >> 8),(byte)(count),
-                            });
-                            break;
-                        case Mnemonic.KRZ:
-                            binaryCode.AddRange(new byte[] {
-                                0x00, 0x00, 0x00, 0x08,
-                                0x03, 0x0F, 0x23, 0x0F,
-                                (byte)(position >> 24),(byte)(position >> 16),
-                                (byte)(position >> 8),(byte)(position),
-                                (byte)(count >> 24),(byte)(count >> 16),
-                                (byte)(count >> 8),(byte)(count),
-                            });
-                            break;
-                        default:
-                            break;
-                    }
+                        Mnemonic = lifem.SetType,
+                        Head = XX + (uint)(position + (labelLifemCount - codeCount - 1) * 16),
+                        Tail = Seti(XX + (uint)(count - (codeCount + 2) * 16)),
+                    };
+
+                    code.Modrm = new ModRm
+                    {
+                        ModeHead = OperandMode.REG32_IMM32,
+                        TypeHead = OperandType.REG,
+                        RegHead = Register.XX,
+                        ModeTail = OperandMode.ADDR_REG32_IMM32,
+                        TypeTail = OperandType.REG,
+                        RegTail = Register.XX,
+                    };
+
+                    codeList.Insert(codeCount, code);
+
+                    codeCount++;
                 }
 
                 switch (lifem.SetType)
@@ -198,7 +179,7 @@ namespace UbplCommon.Translator
                 }
             }
 
-            count = (labelLifemCount + 1) * 16;
+            count = 1 * 16;
             foreach (var code in this.codeList)
             {
                 binaryCode.AddRange(ToBinary((uint)code.Mnemonic));

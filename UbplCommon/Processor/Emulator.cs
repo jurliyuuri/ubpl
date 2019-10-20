@@ -107,7 +107,6 @@ namespace UbplCommon.Processor
                 [Register.F5] = this.initialStackAddress,
                 [Register.F6] = 0,
                 [Register.XX] = this.initialProgramAddress,
-                [Register.UL] = 0,
             };
 
             this.memory[this.initialStackAddress] = this.returnAddress;
@@ -287,9 +286,45 @@ namespace UbplCommon.Processor
 
                 if (ViewMemory)
                 {
+                    int itemCount = 0;
+                    uint prevKey = 0;
                     foreach (var item in this.memory.Binaries.OrderBy(x => x.Key))
                     {
-                        Console.WriteLine("{0:X08}: {1:X08}", item.Key, item.Value);
+                        if(itemCount % 4 == 0)
+                        {
+                            Console.WriteLine();
+                            Console.Write("{0:X08}: {1:X08}", item.Key, item.Value);
+                            itemCount = 0;
+                        }
+                        else if (prevKey != (item.Key - 4))
+                        {
+                            for (int i = itemCount; i < 4; i++)
+                            {
+                                Console.Write(" 00000000");
+                            }
+                            Console.WriteLine();
+
+                            var topAddress = item.Key & 0xFFFFFFF4;
+                            Console.Write("{0:X08}:", topAddress);
+                            
+                            itemCount = (int)(item.Key - topAddress) / 4;
+                            for (int i = 0; i < itemCount; i++)
+                            {
+                                Console.Write(" 00000000");
+                            }
+
+                            Console.Write(" {0:X08}", item.Value);
+                        }
+                        else
+                        {
+                            Console.Write(" {1:X08}", item.Key, item.Value);
+                        }
+                        itemCount++;
+                        prevKey = item.Key;
+                    }
+                    if(itemCount % 4 != 0)
+                    {
+                        Console.WriteLine();
                     }
                 }
 
@@ -310,9 +345,45 @@ namespace UbplCommon.Processor
 
                 if (ViewMemory)
                 {
+                    int itemCount = 0;
+                    uint prevKey = 0;
                     foreach (var item in this.memory.Binaries.OrderBy(x => x.Key))
                     {
-                        Console.WriteLine("{0:X08}: {1:X08}", item.Key, item.Value);
+                        if (itemCount % 4 == 0)
+                        {
+                            Console.WriteLine();
+                            Console.Write("{0:X08}: {1:X08}", item.Key, item.Value);
+                            itemCount = 0;
+                        }
+                        else if (prevKey != (item.Key - 4))
+                        {
+                            for (int i = itemCount; i < 4; i++)
+                            {
+                                Console.Write(" 00000000");
+                            }
+                            Console.WriteLine();
+
+                            var topAddress = item.Key & 0xFFFFFFF4;
+                            Console.Write("{0:X08}:", topAddress);
+
+                            itemCount = (int)(item.Key - topAddress) / 4;
+                            for (int i = 0; i < itemCount; i++)
+                            {
+                                Console.Write(" 00000000");
+                            }
+
+                            Console.Write(" {0:X08}", item.Value);
+                        }
+                        else
+                        {
+                            Console.Write(" {1:X08}", item.Key, item.Value);
+                        }
+                        itemCount++;
+                        prevKey = item.Key;
+                    }
+                    if (itemCount % 4 != 0)
+                    {
+                        Console.WriteLine();
                     }
                 }
 
@@ -856,8 +927,18 @@ namespace UbplCommon.Processor
         /// </summary>
         void Anf(ModRm modrm, uint head, uint tail)
         {
+            var modeTail = modrm.ModeTail;
+            var regTail = modrm.RegTail;
+
+            if (modeTail.HasFlag(OperandMode.ADDRESS))
+            {
+                modeTail = OperandMode.ADDR_IMM32;
+                regTail = Register.F0;
+                tail = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
+            }
+
             SetValue32(modrm.ModeHead, modrm.RegHead, head, (uint)(this.temporary >> 32));
-            SetValue32(modrm.ModeTail, modrm.RegTail, tail, (uint)(this.temporary));
+            SetValue32(modeTail, regTail, tail, (uint)(this.temporary));
         }
 
         /// <summary>

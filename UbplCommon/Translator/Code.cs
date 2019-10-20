@@ -20,7 +20,7 @@ namespace UbplCommon.Translator
         {
             return new StringBuilder("Code(")
                 .Append("Mnemonic: ").Append(this.Mnemonic).Append(", ")
-                .Append("Modrm: ").Append(this.Modrm.Value).Append(", ")
+                .Append("Modrm: ").Append(this.Modrm).Append(", ")
                 .Append("Head: ").Append(this.Head).Append(", ")
                 .Append("Tail: ").Append(this.Tail)
                 .Append(")").ToString();

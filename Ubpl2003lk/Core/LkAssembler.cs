@@ -37,8 +37,8 @@ namespace Ubpl2003lk.Core
         #endregion
 
         readonly IList<string> inFiles;
-        IDictionary<string, bool> kuexok;
-        IDictionary<string, JumpLabel> labels;
+        readonly IDictionary<string, bool> kuexok;
+        readonly IDictionary<string, JumpLabel> labels;
 
         public LkAssembler(List<string> inFiles) : base()
         {
@@ -67,7 +67,7 @@ namespace Ubpl2003lk.Core
 
             int startCount = codeList.Count(x => x.IsLabel && x.Label == FASAL_LABEL);
 
-            switch(startCount)
+            switch (startCount)
             {
                 case 0:
                     break;
@@ -84,7 +84,7 @@ namespace Ubpl2003lk.Core
                     throw new ApplicationException("Found multiple main files");
             }
 
-            if(IsDebug)
+            if (IsDebug)
             {
                 Console.WriteLine("{0}", string.Join(",\n", codeList));
             }
@@ -493,16 +493,7 @@ namespace Ubpl2003lk.Core
                                 Tail = Convert(tail, fileCount),
                             };
 
-                            if (code.Head.IsAddress && (code.Head.First == Register.XX || code.Head.Second == Register.XX))
-                            {
-                                code.Head = Convert(head, fileCount, true);
-                            }
-                            if (code.Middle.IsAddress && (code.Middle.First == Register.XX || code.Middle.Second == Register.XX))
-                            {
-                                code.Middle = Convert(middle, fileCount, true);
-                            }
-
-                                codeList.Add(code);
+                            codeList.Add(code);
                             break;
                         default:
                             break;
@@ -548,7 +539,7 @@ namespace Ubpl2003lk.Core
             return (h, t, count);
         }
         
-        private Operand Convert(string str, int fileCount, bool convertXX = false)
+        private Operand Convert(string str, int fileCount)
         {
             bool seti = str.Last() == '@';
             Operand result;
@@ -561,10 +552,6 @@ namespace Ubpl2003lk.Core
             if (str.IndexOf('+') != -1)
             {
                 string[] paramArray = str.Split('+');
-                if (convertXX) {
-                    paramArray = paramArray.Select(x => x == "xx" ? "ul" : x).ToArray();
-                }
-
                 result = ToOperand(paramArray[0], fileCount);
 
                 for (int i = 1; i < paramArray.Length; i++)
@@ -574,7 +561,7 @@ namespace Ubpl2003lk.Core
             }
             else
             {
-                result = ToOperand((convertXX && str == "xx") ? "ul" : str, fileCount);
+                result = ToOperand(str, fileCount);
             }
 
             if(seti)
@@ -715,20 +702,46 @@ namespace Ubpl2003lk.Core
                                 Fnx(code.Head, code.Tail);
                             }
                         }
-                        else if ((code.Head.IsAddress && (code.Head.First == Register.UL || code.Head.Second == Register.UL))
-                            || (code.Middle.IsAddress && (code.Middle.First == Register.UL || code.Middle.Second == Register.UL)))
-                        {
-                            Krz(XX + 32, UL);
-                            Mte(code.Head, code.Middle);
-                            Anf(code.Middle, code.Tail);
-                        }
                         else
                         {
-                            Operand first = code.Head.First == Register.XX ? XX + 16 : code.Head;
-                            Operand second = code.Middle.First == Register.XX ? XX + 16 : code.Middle;
+                            if (code.Head.First == Register.XX || code.Head.Second == Register.XX)
+                            {
+                                if(code.Head.IsAddress)
+                                {
+                                    Operand newHead = ToRegisterOperand(code.Head.First.Value) + code.Head.Immidiate + 16;
+                                    if(code.Head.Second.HasValue)
+                                    {
+                                        newHead += ToRegisterOperand(code.Head.Second.Value);
+                                    }
 
-                            Mte(first, second);
-                            Anf(code.Tail, code.Middle);
+                                    code.Head = Seti(newHead);
+                                }
+                                else
+                                {
+                                    code.Head += 16;
+                                }
+                            }
+
+                            if (code.Middle.First == Register.XX || code.Middle.Second == Register.XX)
+                            {
+                                if (code.Middle.IsAddress)
+                                {
+                                    Operand newMiddle = ToRegisterOperand(code.Middle.First.Value) + code.Middle.Immidiate + 16;
+                                    if (code.Middle.Second.HasValue)
+                                    {
+                                        newMiddle += ToRegisterOperand(code.Middle.Second.Value);
+                                    }
+
+                                    code.Middle = Seti(newMiddle);
+                                }
+                                else
+                                {
+                                    code.Middle += 16;
+                                }
+                            }
+
+                            Mte(code.Head, code.Middle);
+                            Anf(code.Middle, code.Tail);
                         }
                         break;
                     case LkMnemonic.LAT:
