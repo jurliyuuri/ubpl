@@ -148,15 +148,7 @@ namespace UbplCommon.Translator
                         Tail = Seti(XX + (uint)(count - (codeCount + 2) * 16)),
                     };
 
-                    code.Modrm = new ModRm
-                    {
-                        ModeHead = OperandMode.REG32_IMM32,
-                        TypeHead = OperandType.REG,
-                        RegHead = Register.XX,
-                        ModeTail = OperandMode.ADDR_REG32_IMM32,
-                        TypeTail = OperandType.REG,
-                        RegTail = Register.XX,
-                    };
+                    code.Modrm = CreateModRm(code.Head, code.Tail);
 
                     codeList.Insert(codeCount, code);
 

@@ -110,6 +110,10 @@ namespace UbplCommon.Translator
                     {
                         mode |= OperandMode.XX_IMM32;
                     }
+                    else if (this.immidiate != 0)
+                    {
+                        mode |= OperandMode.REG32_IMM32;
+                    }
                 }
                 else if (register1)
                 {
@@ -120,6 +124,10 @@ namespace UbplCommon.Translator
                     else if (this.labelAddresses[1] != null)
                     {
                         mode |= OperandMode.XX_IMM32;
+                    }
+                    else if (this.immidiate != 0)
+                    {
+                        mode |= OperandMode.REG32_IMM32;
                     }
                 }
                 else if (has0 && has1)
