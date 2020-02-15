@@ -36,61 +36,59 @@ namespace Ubpl2003lk.Core
 
         #endregion
 
-        private readonly IList<string> _inFiles;
-        private readonly IDictionary<string, bool> _kuexok;
-        private readonly IDictionary<string, JumpLabel> _labels;
-        private readonly IList<LkCode> _labelLifemList;
+        readonly IList<string> inFiles;
+        readonly IDictionary<string, bool> kuexok;
+        readonly IDictionary<string, JumpLabel> labels;
 
         public LkAssembler(List<string> inFiles) : base()
         {
-            _inFiles = inFiles;
-            _kuexok = new Dictionary<string, bool>();
-            _labels = new Dictionary<string, JumpLabel>();
-            _labelLifemList = new List<LkCode>();
+            this.inFiles = inFiles;
+            this.kuexok = new Dictionary<string, bool>();
+            this.labels = new Dictionary<string, JumpLabel>();
         }
 
         public void Execute(string outFile)
         {
             List<LkCode> codeList = new List<LkCode>();
             int count = 0;
-            bool hasMain = false;
-
-            foreach (var inFile in _inFiles)
+            
+            foreach (var inFile in inFiles)
             {
                 IList<string> wordList = Read(inFile);
 
-                if (IsDebug)
+                if(IsDebug)
                 {
-                    Console.WriteLine("wordList: {0}", string.Join(",", wordList));
+                    Console.WriteLine("{0}", string.Join(",", wordList));
                 }
 
                 AnalyzeLabel(wordList);
-                IList<LkCode> lkCodes = Analyze(wordList, count++, out bool isMain);
+                codeList.AddRange(Analyze(wordList, count++));
+            }
 
-                if (isMain)
-                {
-                    if (hasMain)
+            int startCount = codeList.Count(x => x.IsLabel && x.Label == FASAL_LABEL);
+
+            switch (startCount)
+            {
+                case 0:
+                    break;
+                case 1:
+                    this.labels.Add(FASAL_LABEL_NAME, FASAL_LABEL);
+                    codeList.Insert(0, new LkCode
                     {
-                        throw new ApplicationException("already define main");
-                    }
-                    else
-                    {
-                        codeList.InsertRange(0, lkCodes);
-                        hasMain = true;
-                    }
-                }
-                else
-                {
-                    codeList.AddRange(lkCodes);
-                }
+                        Mnemonic = LkMnemonic.KRZ,
+                        Head = FASAL_LABEL,
+                        Tail = XX,
+                    });
+                    break;
+                default:
+                    throw new ApplicationException("Found multiple main files");
             }
 
             if (IsDebug)
             {
-                Console.WriteLine("codeList: {0}", string.Join(",", codeList));
+                Console.WriteLine("{0}", string.Join(",\n", codeList));
             }
 
-            codeList.InsertRange(0, _labelLifemList);
             Create(codeList);
             Write(outFile);
         }
@@ -233,14 +231,14 @@ namespace Ubpl2003lk.Core
                     case "kue":
                         label = wordList[++i];
 
-                        _kuexok[label] = true;
+                        kuexok[label] = true;
                         break;
                     case "xok":
                         label = wordList[++i];
 
-                        if (!_kuexok.ContainsKey(label))
+                        if (!kuexok.ContainsKey(label))
                         {
-                            _kuexok[label] = false;
+                            kuexok[label] = false;
                         }
                         break;
                     case "krz":
@@ -287,11 +285,11 @@ namespace Ubpl2003lk.Core
 
         #region 中間コード化
 
-        private IList<LkCode> Analyze(IList<string> wordList, int fileCount, out bool isMain)
+        private IList<LkCode> Analyze(IList<string> wordList, int fileCount)
         {
             List<LkCode> codeList = new List<LkCode>();
+            bool isMain = true;
             bool isCI = false;
-            isMain = true;
 
             for (int i = 0; i < wordList.Count; i++)
             {
@@ -309,16 +307,32 @@ namespace Ubpl2003lk.Core
                 {
                     string label;
                     string head, middle, tail;
+                    JumpLabel jumpLabel;
 
                     switch (str)
                     {
                         case "nll":
                             label = wordList[++i];
 
+                            if (!this.kuexok.ContainsKey(label))
+                            {
+                                label = $"{label}@{fileCount}";
+                            }
+
+                            if (this.labels.ContainsKey(label))
+                            {
+                                jumpLabel = this.labels[label];
+                            }
+                            else
+                            {
+                                jumpLabel = new JumpLabel();
+                                this.labels.Add(label, jumpLabel);
+                            }
+                            
                             codeList.Add(new LkCode
                             {
                                 Mnemonic = LkMnemonic.NLL,
-                                Head = GetLabel(label, fileCount),
+                                Label = jumpLabel,
                             });
 
                             if (wordList[i + 1] == "l'")
@@ -334,10 +348,25 @@ namespace Ubpl2003lk.Core
 
                             label = wordList[++i];
 
+                            if (!this.kuexok.ContainsKey(label))
+                            {
+                                label = $"{label}@{fileCount}";
+                            }
+
+                            if (this.labels.ContainsKey(label))
+                            {
+                                jumpLabel = this.labels[label];
+                            }
+                            else
+                            {
+                                jumpLabel = new JumpLabel();
+                                this.labels.Add(label, jumpLabel);
+                            }
+
                             codeList.Insert(codeList.Count - 1, new LkCode
                             {
                                 Mnemonic = LkMnemonic.NLL,
-                                Head = GetLabel(label, fileCount),
+                                Label = jumpLabel,
                             });
                             break;
                         case "kue":
@@ -352,32 +381,7 @@ namespace Ubpl2003lk.Core
                         case "lifem16":
                             Operand opd = Convert(wordList[++i], fileCount);
 
-                            if (opd.HasLabel)
-                            {
-                                var jumpLabel = new JumpLabel();
-
-                                codeList.Add(new LkCode
-                                {
-                                    Mnemonic = LkMnemonic.NLL,
-                                    Head = jumpLabel,
-                                });
-                                codeList.Add(new LkCode
-                                {
-                                    Mnemonic = (LkMnemonic)Enum.Parse(typeof(LkMnemonic), str, true),
-                                    Head = ZERO,
-                                });
-                                _labelLifemList.Add(new LkCode
-                                {
-                                    Mnemonic = str switch
-                                    {
-                                        "lifem8" => LkMnemonic.KRZ8C,
-                                        "lifem16" => LkMnemonic.KRZ16C,
-                                        _ => LkMnemonic.KRZ,
-                                    },
-                                    Head = jumpLabel,
-                                });
-                            }
-                            else if (!opd.FirstRegister.HasValue && !opd.SecondRegister.HasValue)
+                            if (opd.HasLabel || (!opd.First.HasValue && !opd.Second.HasValue))
                             {
                                 codeList.Add(new LkCode
                                 {
@@ -444,6 +448,8 @@ namespace Ubpl2003lk.Core
                                 Tail = Convert(tail, fileCount),
                             });
                             break;
+                        case "kak":
+                            throw new NotSupportedException("Not Supported 'kak'");
                         case "nac":
                             codeList.Add(new LkCode
                             {
@@ -495,6 +501,25 @@ namespace Ubpl2003lk.Core
                 }
             }
 
+            if (isMain)
+            {
+                LkMnemonic[] skip =
+                {
+                     LkMnemonic.LIFEM,
+                     LkMnemonic.LIFEM8,
+                     LkMnemonic.LIFEM16,
+                     LkMnemonic.NLL,
+                };
+
+                int index = codeList.FindIndex(x => !skip.Contains(x.Mnemonic));
+
+                codeList.Insert(index, new LkCode
+                {
+                    Mnemonic = LkMnemonic.NLL,
+                    Label = FASAL_LABEL,
+                });
+            }
+
             return codeList;
         }
 
@@ -527,15 +552,11 @@ namespace Ubpl2003lk.Core
             if (str.IndexOf('+') != -1)
             {
                 string[] paramArray = str.Split('+');
-                if (paramArray.Length > 2)
-                {
-                    throw new ApplicationException($"Invalid Operand: {str}");
-                }
-
                 result = ToOperand(paramArray[0], fileCount);
-                if (paramArray.Length == 2)
+
+                for (int i = 1; i < paramArray.Length; i++)
                 {
-                    result += ToOperand(paramArray[1], fileCount);
+                    result += ToOperand(paramArray[i], fileCount);
                 }
             }
             else
@@ -565,26 +586,23 @@ namespace Ubpl2003lk.Core
             }
             else
             {
-                return GetLabel(str, fileCount);
-            }
-        }
+                string label = str;
 
-        JumpLabel GetLabel(string labelName, int fileCount)
-        {
-            if (!_kuexok.ContainsKey(labelName))
-            {
-                labelName = $"{labelName}@{fileCount}";
-            }
+                if(!kuexok.ContainsKey(label))
+                {
+                    label = $"{label}@{fileCount}";
+                }
 
-            if (_labels.ContainsKey(labelName))
-            {
-                return _labels[labelName];
-            }
-            else
-            {
-                var jumpLabel = new JumpLabel();
-                _labels.Add(labelName, jumpLabel);
-                return jumpLabel;
+                if(this.labels.ContainsKey(label))
+                {
+                    return this.labels[label];
+                }
+                else
+                {
+                    var jumpLabel = new JumpLabel();
+                    this.labels.Add(label, jumpLabel);
+                    return jumpLabel;
+                }
             }
         }
 
@@ -596,16 +614,6 @@ namespace Ubpl2003lk.Core
         {
             foreach (var code in codeList)
             {
-                if (code.Head == null)
-                {
-                    throw new ApplicationException("Illegal operand: head is null");
-                }
-
-                if (code.Tail == null)
-                {
-                    throw new ApplicationException("Illegal operand: head is null");
-                }
-
                 switch (code.Mnemonic)
                 {
                     case LkMnemonic.ATA:
@@ -681,16 +689,10 @@ namespace Ubpl2003lk.Core
                         Fi(code.Head, code.Tail, XYLO);
                         break;
                     case LkMnemonic.INJ:
-
-                        if (code.Middle == null)
+                        if (!code.Middle.HasLabel && !code.Middle.IsAddress
+                            && code.Middle.First == Register.XX && code.Middle.Second == null && code.Middle.Immidiate == 0)
                         {
-                            throw new ApplicationException("Illegal operand: middle is null");
-                        }
-
-                        if (!code.Middle.HasLabel && !code.Middle.IsAddressing
-                            && code.Middle.FirstRegister == Register.XX && code.Middle.SecondRegister == null && code.Middle.Immidiate == 0)
-                        {
-                            if(!code.Head.IsAddressing && !code.Head.HasLabel && code.Head.Immidiate == TVARLON_KNLOAN_ADDRESS)
+                            if(!code.Head.IsAddress && !code.Head.HasLabel && code.Head.Immidiate == TVARLON_KNLOAN_ADDRESS)
                             {
                                 Klon(0xFF, Seti(F5 + 4));
                                 Krz(code.Middle, code.Tail);
@@ -702,15 +704,14 @@ namespace Ubpl2003lk.Core
                         }
                         else
                         {
-                            if (code.Head.FirstRegister == Register.XX || code.Head.SecondRegister == Register.XX)
+                            if (code.Head.First == Register.XX || code.Head.Second == Register.XX)
                             {
-                                if(code.Head.IsAddressing)
+                                if(code.Head.IsAddress)
                                 {
-                                    Operand newHead = ToRegisterOperand(code.Head.FirstRegister!.Value)
-                                        + code.Head.Immidiate + 16;
-                                    if(code.Head.SecondRegister.HasValue)
+                                    Operand newHead = ToRegisterOperand(code.Head.First.Value) + code.Head.Immidiate + 16;
+                                    if(code.Head.Second.HasValue)
                                     {
-                                        newHead += ToRegisterOperand(code.Head.SecondRegister.Value);
+                                        newHead += ToRegisterOperand(code.Head.Second.Value);
                                     }
 
                                     code.Head = Seti(newHead);
@@ -721,14 +722,14 @@ namespace Ubpl2003lk.Core
                                 }
                             }
 
-                            if (code.Middle.FirstRegister == Register.XX || code.Middle.SecondRegister == Register.XX)
+                            if (code.Middle.First == Register.XX || code.Middle.Second == Register.XX)
                             {
-                                if (code.Middle.IsAddressing)
+                                if (code.Middle.IsAddress)
                                 {
-                                    Operand newMiddle = ToRegisterOperand(code.Middle.FirstRegister!.Value) + code.Middle.Immidiate + 16;
-                                    if (code.Middle.SecondRegister.HasValue)
+                                    Operand newMiddle = ToRegisterOperand(code.Middle.First.Value) + code.Middle.Immidiate + 16;
+                                    if (code.Middle.Second.HasValue)
                                     {
-                                        newMiddle += ToRegisterOperand(code.Middle.SecondRegister.Value);
+                                        newMiddle += ToRegisterOperand(code.Middle.Second.Value);
                                     }
 
                                     code.Middle = Seti(newMiddle);
@@ -744,41 +745,45 @@ namespace Ubpl2003lk.Core
                         }
                         break;
                     case LkMnemonic.LAT:
-                        if (code.Middle == null)
-                        {
-                            throw new ApplicationException("Illegal operand: middle is null");
-                        }
-
                         Lat(code.Head, code.Middle);
                         Anf(code.Tail, code.Middle);
                         break;
                     case LkMnemonic.LATSNA:
-                        if (code.Middle == null)
-                        {
-                            throw new ApplicationException("Illegal operand: middle is null");
-                        }
-
                         Latsna(code.Head, code.Middle);
                         Anf(code.Tail, code.Middle);
                         break;
                     case LkMnemonic.NLL:
-                        if (code.Head is JumpLabel jumpLabel)
+                        Nll(code.Label);
+                        break;
+                    case LkMnemonic.LIFEM:
+                        if(code.Head is JumpLabel)
                         {
-                            Nll(jumpLabel);
+                            Lifem(code.Head as JumpLabel);
                         }
                         else
                         {
-                            throw new ApplicationException("Illegal operand: nll's openrand is not label");
+                            Lifem(code.Head.Immidiate);
                         }
                         break;
-                    case LkMnemonic.LIFEM:
-                        Lifem(code.Head.Immidiate);
-                        break;
                     case LkMnemonic.LIFEM8:
-                        Lifem8(code.Head.Immidiate);
+                        if (code.Head is JumpLabel)
+                        {
+                            Lifem8(code.Head as JumpLabel);
+                        }
+                        else
+                        {
+                            Lifem8(code.Head.Immidiate);
+                        }
                         break;
                     case LkMnemonic.LIFEM16:
-                        Lifem16(code.Head.Immidiate);
+                        if (code.Head is JumpLabel)
+                        {
+                            Lifem16(code.Head as JumpLabel);
+                        }
+                        else
+                        {
+                            Lifem16(code.Head.Immidiate);
+                        }
                         break;
                     case LkMnemonic.KLON:
                         Klon(code.Head, code.Tail);

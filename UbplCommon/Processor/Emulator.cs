@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace UbplCommon.Processor
 {
@@ -14,43 +13,48 @@ namespace UbplCommon.Processor
         /// <summary>
         /// メモリ
         /// </summary>
-        readonly Memory memory;
+        readonly Memory _memory;
 
         /// <summary>
         /// ジャンプフラグ
         /// </summary>
-        bool flags;
+        bool _compareFlag;
 
         /// <summary>
         /// 汎用レジスタ
         /// </summary>
-        readonly IDictionary<Register, uint> registers;
+        readonly IDictionary<Register, uint> _registers;
 
         /// <summary>
         /// デバッグ用出力バッファ
         /// </summary>
-        readonly List<string> debugBuffer;
+        readonly List<string> _debugBuffer;
 
         /// <summary>
-        /// Lat系やKak系の値を一時保存するための変数
+        /// MTEのheadに設定された値を保持する内部レジスタ
         /// </summary>
-        ulong temporary;
+        uint _headTemporary;
 
         /// <summary>
-        /// 2003fのF5レジスタのデフォルト値
+        /// MTEのtailに設定された値を保持する内部レジスタ
         /// </summary>
-        readonly uint initialStackAddress;
+        uint _tailTemporary;
 
         /// <summary>
-        /// 2003fのNXレジスタのデフォルト値
+        /// F5レジスタのデフォルト値
         /// </summary>
-        readonly uint initialProgramAddress;
+        readonly uint _initialStackAddress;
+
+        /// <summary>
+        /// NXレジスタのデフォルト値
+        /// </summary>
+        readonly uint _initialProgramAddress;
 
         /// <summary>
         /// アプリケーションのリターンアドレス
         /// </summary>
-        readonly uint returnAddress;
-        
+        readonly uint _returnAddress;
+
         #endregion
 
         #region Properties
@@ -60,7 +64,7 @@ namespace UbplCommon.Processor
         /// </summary>
         public IReadOnlyDictionary<uint, uint> Memory
         {
-            get => this.memory.Binaries;
+            get => _memory.Binaries;
         }
 
         /// <summary>
@@ -78,8 +82,8 @@ namespace UbplCommon.Processor
         /// <summary>
         /// コンストラクタ
         /// </summary>
-        public Emulator() : this(UbplConstant.DEFAULT_INITIAL_F5,
-            UbplConstant.DEFAULT_INITIAL_NX, UbplConstant.DEFAULT_RETURN_ADDRESS) { }
+        public Emulator() : this(UbplConstants.DEFAULT_INITIAL_F5,
+            UbplConstants.DEFAULT_INITIAL_NX, UbplConstants.DEFAULT_RETURN_ADDRESS) { }
 
         /// <summary>
         /// コンストラクタ
@@ -89,43 +93,36 @@ namespace UbplCommon.Processor
         /// <param name="returnAddress">プログラムのリターンアドレス</param>
         public Emulator(uint initialStackAddress, uint initialProgramAddress, uint returnAddress)
         {
-            this.memory = new Memory();
-            this.flags = false;
-            this.debugBuffer = new List<string>();
+            _memory = new Memory();
+            _compareFlag = false;
+            _debugBuffer = new List<string>();
 
-            this.initialStackAddress = initialStackAddress;
-            this.initialProgramAddress = initialProgramAddress;
-            this.returnAddress = returnAddress;
+            _initialStackAddress = initialStackAddress;
+            _initialProgramAddress = initialProgramAddress;
+            _returnAddress = returnAddress;
 
-            this.registers = new Dictionary<Register, uint>
+            Random random = new Random();
+
+            _registers = new Dictionary<Register, uint>
             {
-                [Register.F0] = 0,
-                [Register.F1] = 0,
-                [Register.F2] = 0,
-                [Register.F3] = 0,
-                [Register.F4] = 0,
-                [Register.F5] = this.initialStackAddress,
-                [Register.F6] = 0,
-                [Register.XX] = this.initialProgramAddress,
+                [Register.F0] = (uint)random.Next(int.MinValue, int.MaxValue),
+                [Register.F1] = (uint)random.Next(int.MinValue, int.MaxValue),
+                [Register.F2] = (uint)random.Next(int.MinValue, int.MaxValue),
+                [Register.F3] = (uint)random.Next(int.MinValue, int.MaxValue),
+                [Register.F4] = (uint)random.Next(int.MinValue, int.MaxValue),
+                [Register.F5] = _initialStackAddress,
+                [Register.F6] = (uint)random.Next(int.MinValue, int.MaxValue),
+                [Register.XX] = _initialProgramAddress,
             };
 
-            this.memory[this.initialStackAddress] = this.returnAddress;
+            _memory[_initialStackAddress] = _returnAddress;
         }
 
         /// <summary>
         /// バイナリコードを読み込みます．
         /// </summary>
         /// <param name="binary">ubplバイナリデータ</param>
-        public void Read(IReadOnlyList<byte> binary)
-        {
-            Read(binary.ToArray());
-        }
-
-        /// <summary>
-        /// バイナリコードを読み込みます．
-        /// </summary>
-        /// <param name="binary">ubplバイナリデータ</param>
-        public void Read(IList<byte> binary)
+        public void Read(IEnumerable<byte> binary)
         {
             Read(binary.ToArray());
         }
@@ -136,16 +133,15 @@ namespace UbplCommon.Processor
         /// <param name="binary">ubplバイナリデータ</param>
         public void Read(byte[] binary)
         {
-            if (initialProgramAddress + binary.LongLength >= (long)uint.MaxValue)
+            if ((_initialProgramAddress + binary.LongLength) >= uint.MaxValue)
             {
                 throw new ApplicationException("Too Large Programme");
             }
 
-            uint u = initialProgramAddress;
+            uint u = _initialProgramAddress;
             for (int i = 0; i < binary.Length; i += 4)
             {
-                this.memory[u] = (uint)((binary[i] << 24) | (binary[i + 1] << 16)
-                    | (binary[i + 2] << 8) | binary[i + 3]);
+                _memory[u] = (uint)((binary[i] << 24) | (binary[i + 1] << 16) | (binary[i + 2] << 8) | binary[i + 3]);
                 u += 4;
             }
         }
@@ -159,490 +155,313 @@ namespace UbplCommon.Processor
             Read(File.ReadAllBytes(filepath));
         }
 
-        /// <summary>
-        /// 読み込んだバイナリコードを実行します．
-        /// </summary>
         public void Run()
         {
             try
             {
-                while (this.registers[Register.XX] != returnAddress)
+                uint address;
+
+                while ((address = _registers[Register.XX]) != _returnAddress)
                 {
-                    Mnemonic code = (Mnemonic)this.memory[this.registers[Register.XX]];
-                    //Console.WriteLine("nx = {0:X08}, code = {1:X08}", this.registers[Register.XX], code);
+                    Mnemonic code = (Mnemonic)_memory[address];
+                    address += 4;
 
-                    this.registers[Register.XX] += 4;
+                    ModRm modrm = new ModRm(_memory[address]);
+                    address += 4;
 
-                    ModRm modrm = new ModRm(this.memory[this.registers[Register.XX]]);
-                    this.registers[Register.XX] += 4;
+                    uint head = _memory[address];
+                    address += 4;
 
-                    uint first = this.memory[this.registers[Register.XX]];
-                    this.registers[Register.XX] += 4;
+                    uint tail = _memory[address];
+                    address += 4;
 
-                    uint second = this.memory[this.registers[Register.XX]];
-                    this.registers[Register.XX] += 4;
+                    _registers[Register.XX] = address;
 
-                    #region コード分岐
                     switch (code)
                     {
-                        case Mnemonic.ATA:
-                            Ata(modrm, first, second);
-                            break;
-                        case Mnemonic.NTA:
-                            Nta(modrm, first, second);
-                            break;
-                        case Mnemonic.ADA:
-                            Ada(modrm, first, second);
-                            break;
-                        case Mnemonic.EKC:
-                            Ekc(modrm, first, second);
-                            break;
-                        case Mnemonic.DTO:
-                            Dto(modrm, first, second);
-                            break;
-                        case Mnemonic.DRO:
-                            Dro(modrm, first, second);
-                            break;
-                        case Mnemonic.DTOSNA:
-                            Dtosna(modrm, first, second);
-                            break;
-                        case Mnemonic.DAL:
-                            Dal(modrm, first, second);
-                            break;
                         case Mnemonic.KRZ:
-                            Krz(modrm, first, second);
+                            Krz(modrm, head, tail);
                             break;
                         case Mnemonic.MALKRZ:
-                            Malkrz(modrm, first, second);
+                            Malkrz(modrm, head, tail);
                             break;
                         case Mnemonic.KRZ8I:
-                            Krz8i(modrm, first, second);
+                            Krz8i(modrm, head, tail);
                             break;
                         case Mnemonic.KRZ16I:
-                            Krz16i(modrm, first, second);
+                            Krz16i(modrm, head, tail);
                             break;
                         case Mnemonic.KRZ8C:
-                            Krz8c(modrm, first, second);
+                            Krz8c(modrm, head, tail);
                             break;
                         case Mnemonic.KRZ16C:
-                            Krz16c(modrm, first, second);
+                            Krz16c(modrm, head, tail);
                             break;
-                        case Mnemonic.XTLONYS:
-                            Xtlonys(modrm, first, second);
+                        case Mnemonic.ATA:
+                            Ata(modrm, head, tail);
                             break;
-                        case Mnemonic.XYLONYS:
-                            Xylonys(modrm, first, second);
+                        case Mnemonic.NTA:
+                            Nta(modrm, head, tail);
                             break;
-                        case Mnemonic.CLO:
-                            Clo(modrm, first, second);
+                        case Mnemonic.ADA:
+                            Ada(modrm, head, tail);
                             break;
-                        case Mnemonic.NIV:
-                            Niv(modrm, first, second);
+                        case Mnemonic.EKC:
+                            Ekc(modrm, head, tail);
                             break;
-                        case Mnemonic.XTLO:
-                            Xtlo(modrm, first, second);
+                        case Mnemonic.DTO:
+                            Dto(modrm, head, tail);
                             break;
-                        case Mnemonic.XYLO:
-                            Xylo(modrm, first, second);
+                        case Mnemonic.DRO:
+                            Dro(modrm, head, tail);
                             break;
-                        case Mnemonic.FNX:
-                            Fnx(modrm, first, second);
+                        case Mnemonic.DTOSNA:
+                            Dtosna(modrm, head, tail);
+                            break;
+                        case Mnemonic.DAL:
+                            Dal(modrm, head, tail);
                             break;
                         case Mnemonic.MTE:
-                            Mte(modrm, first, second);
+                            Mte(modrm, head, tail);
                             break;
                         case Mnemonic.ANF:
-                            Anf(modrm, first, second);
+                            Anf(modrm, head, tail);
+                            break;
+                        case Mnemonic.CLO:
+                            Clo(modrm, head, tail);
+                            break;
+                        case Mnemonic.NIV:
+                            Niv(modrm, head, tail);
+                            break;
+                        case Mnemonic.XTLONYS:
+                            Xtlonys(modrm, head, tail);
+                            break;
+                        case Mnemonic.XYLONYS:
+                            Xylonys(modrm, head, tail);
+                            break;
+                        case Mnemonic.XTLO:
+                            Xtlo(modrm, head, tail);
+                            break;
+                        case Mnemonic.XYLO:
+                            Xylo(modrm, head, tail);
                             break;
                         case Mnemonic.LAT:
-                            Lat(modrm, first, second);
+                            Lat(modrm, head, tail);
                             break;
                         case Mnemonic.LATSNA:
-                            Latsna(modrm, first, second);
+                            Latsna(modrm, head, tail);
                             break;
                         case Mnemonic.KAK:
-                            Kak(modrm, first, second);
+                            Kak(modrm, head, tail);
                             break;
                         case Mnemonic.KAKSNA:
-                            Kaksna(modrm, first, second);
+                            Kaksna(modrm, head, tail);
+                            break;
+                        case Mnemonic.FNX:
+                            Fnx(modrm, head, tail);
                             break;
                         case Mnemonic.KLON:
-                            Klon(modrm, first, second);
+                            Klon(modrm, head, tail);
                             break;
                         default:
-                            throw new NotImplementedException($"Not Implemented: {code:X}, nx = {(this.registers[Register.XX] - 16):X08}");
+                            throw new NotImplementedException($"Not Implemented: {code:X}, nx = {(_registers[Register.XX] - 16):X08}");
                     }
 
-                    #endregion
+                    OutputEmulatorValues();
                 }
 
-                if (ViewRegister)
-                {
-                    foreach (var register in this.registers)
-                    {
-                        Console.WriteLine("{0} = {1:X08}", register.Key, register.Value);
-                    }
-                }
-
-                if (ViewMemory)
-                {
-                    int itemCount = 0;
-                    uint prevKey = 0;
-                    foreach (var item in this.memory.Binaries.OrderBy(x => x.Key))
-                    {
-                        if(itemCount % 4 == 0)
-                        {
-                            Console.WriteLine();
-                            Console.Write("{0:X08}: {1:X08}", item.Key, item.Value);
-                            itemCount = 0;
-                        }
-                        else if (prevKey != (item.Key - 4))
-                        {
-                            for (int i = itemCount; i < 4; i++)
-                            {
-                                Console.Write(" 00000000");
-                            }
-                            Console.WriteLine();
-
-                            var topAddress = item.Key & 0xFFFFFFF4;
-                            Console.Write("{0:X08}:", topAddress);
-                            
-                            itemCount = (int)(item.Key - topAddress) / 4;
-                            for (int i = 0; i < itemCount; i++)
-                            {
-                                Console.Write(" 00000000");
-                            }
-
-                            Console.Write(" {0:X08}", item.Value);
-                        }
-                        else
-                        {
-                            Console.Write(" {1:X08}", item.Key, item.Value);
-                        }
-                        itemCount++;
-                        prevKey = item.Key;
-                    }
-                    if(itemCount % 4 != 0)
-                    {
-                        Console.WriteLine();
-                    }
-                }
-
-                Console.WriteLine("[{0}]", string.Join(",", this.debugBuffer));
+                Console.WriteLine("[{0}]", string.Join(",", _debugBuffer));
             }
             catch (Exception ex)
             {
-                if (ViewRegister)
-                {
-                    for (int i = 0; i < this.registers.Count; i++)
-                    {
-                        if (this.registers.ContainsKey((Register)i))
-                        {
-                            Console.WriteLine("{0} = {1:X08}", (Register)i, this.registers[(Register)i]);
-                        }
-                    }
-                }
-
-                if (ViewMemory)
-                {
-                    int itemCount = 0;
-                    uint prevKey = 0;
-                    foreach (var item in this.memory.Binaries.OrderBy(x => x.Key))
-                    {
-                        if (itemCount % 4 == 0)
-                        {
-                            Console.WriteLine();
-                            Console.Write("{0:X08}: {1:X08}", item.Key, item.Value);
-                            itemCount = 0;
-                        }
-                        else if (prevKey != (item.Key - 4))
-                        {
-                            for (int i = itemCount; i < 4; i++)
-                            {
-                                Console.Write(" 00000000");
-                            }
-                            Console.WriteLine();
-
-                            var topAddress = item.Key & 0xFFFFFFF4;
-                            Console.Write("{0:X08}:", topAddress);
-
-                            itemCount = (int)(item.Key - topAddress) / 4;
-                            for (int i = 0; i < itemCount; i++)
-                            {
-                                Console.Write(" 00000000");
-                            }
-
-                            Console.Write(" {0:X08}", item.Value);
-                        }
-                        else
-                        {
-                            Console.Write(" {1:X08}", item.Key, item.Value);
-                        }
-                        itemCount++;
-                        prevKey = item.Key;
-                    }
-                    if (itemCount % 4 != 0)
-                    {
-                        Console.WriteLine();
-                    }
-                }
-
-                Console.WriteLine("[{0}]", string.Join(",", this.debugBuffer));
+                OutputEmulatorValues();
+                Console.WriteLine("[{0}]", string.Join(",", _debugBuffer));
 
                 throw new Exception("Emulator error", ex);
             }
         }
 
-        #region ModRm
-        
-        byte GetValue8(OperandMode mode, Register register, uint value)
+        private void OutputEmulatorValues()
         {
-            uint result = 0;
-
-            switch ((OperandMode)((uint)mode & 3U))
+            if (ViewRegister)
             {
-                case OperandMode.REG32:
-                    result = this.registers[register];
-                    break;
-                case OperandMode.IMM32:
-                    result = value;
-                    break;
-                case OperandMode.REG32_REG32:
-                    result = this.registers[register] + this.registers[(Register)value];
-                    break;
-                case OperandMode.REG32_IMM32:
-                    result = this.registers[register] + value;
-                    break;
-                default:
-                    break;
+                for (int i = 0; i < _registers.Count; i++)
+                {
+                    Register register = (Register)i;
+                    Console.WriteLine("{0} = {1:X08}", register, _registers[register]);
+                }
             }
 
-            if (mode.HasFlag(OperandMode.ADD_XX))
+            if (ViewMemory)
             {
-                result += this.registers[Register.XX];
+                int itemCount = 0;
+                uint prevKey = 0;
+                foreach (var item in _memory.Binaries.OrderBy(x => x.Key))
+                {
+                    if (itemCount % 4 == 0)
+                    {
+                        Console.WriteLine();
+                        Console.Write("{0:X08}: {1:X08}", item.Key, item.Value);
+                        itemCount = 0;
+                    }
+                    else if (prevKey != (item.Key - 4))
+                    {
+                        for (int i = itemCount; i < 4; i++)
+                        {
+                            Console.Write(" 00000000");
+                        }
+                        Console.WriteLine();
+
+                        var topAddress = item.Key & 0xFFFFFFF4;
+                        Console.Write("{0:X08}:", topAddress);
+
+                        itemCount = (int)(item.Key - topAddress) / 4;
+                        for (int i = 0; i < itemCount; i++)
+                        {
+                            Console.Write(" 00000000");
+                        }
+
+                        Console.Write(" {0:X08}", item.Value);
+                    }
+                    else
+                    {
+                        Console.Write(" {1:X08}", item.Key, item.Value);
+                    }
+                    itemCount++;
+                    prevKey = item.Key;
+                }
+                if (itemCount % 4 != 0)
+                {
+                    Console.WriteLine();
+                }
             }
 
-            if (mode.HasFlag(OperandMode.ADDRESS))
+            if (ViewRegister || ViewMemory)
             {
-                result = this.memory.GetValue8(result);
+                Console.WriteLine();
+            }
+        }
+
+        #region ModRM
+
+        uint GetValue8(OperandMode mode, Register fir1, Register reg2, uint imm)
+        {
+            return GetValue(mode, fir1, reg2, imm, ValueSize.BYTE);
+        }
+
+        uint GetValue16(OperandMode mode, Register fir1, Register reg2, uint imm)
+        {
+            return GetValue(mode, fir1, reg2, imm, ValueSize.WORD);
+        }
+
+        uint GetValue32(OperandMode mode, Register fir1, Register reg2, uint imm)
+        {
+            return GetValue(mode, fir1, reg2, imm, ValueSize.DWORD);
+        }
+
+        private uint GetValue(OperandMode mode, Register reg1, Register reg2, uint imm, ValueSize size)
+        {
+            OperandMode operandPattern = GetOperandPattern(mode);
+            uint result;
+            if (_registers.TryGetValue(reg1, out uint reg1Value) && _registers.TryGetValue(reg2, out uint reg2Value)) {
+                result = operandPattern switch
+                {
+                    OperandMode.REG => reg1Value,
+                    OperandMode.IMM => imm,
+                    OperandMode.IMM_REG => imm + reg1Value,
+                    OperandMode.IMM_NREG => imm - reg1Value,
+                    OperandMode.IMM_REG_REG => imm + reg1Value + reg2Value,
+                    OperandMode.IMM_REG_NREG => imm + reg1Value - reg2Value,
+                    OperandMode.IMM_NREG_REG => imm - reg1Value + reg2Value,
+                    OperandMode.IMM_NREG_NREG => imm - reg1Value + reg2Value,
+                    _ => throw new Exception($"invalid operand mode : {operandPattern}"),
+                };
             }
             else
             {
-                result >>= 24;
-            }
-
-            return (byte)result;
-        }
-
-        ushort GetValue16(OperandMode mode, Register register, uint value)
-        {
-            uint result = 0;
-
-            switch ((OperandMode)((uint)mode & 3U))
-            {
-                case OperandMode.REG32:
-                    result = this.registers[register];
-                    break;
-                case OperandMode.IMM32:
-                    result = value;
-                    break;
-                case OperandMode.REG32_REG32:
-                    result = this.registers[register] + this.registers[(Register)value];
-                    break;
-                case OperandMode.REG32_IMM32:
-                    result = this.registers[register] + value;
-                    break;
-                default:
-                    break;
-            }
-
-            if (mode.HasFlag(OperandMode.ADD_XX))
-            {
-                result += this.registers[Register.XX];
+                throw new Exception($"invalid register : {operandPattern}, {reg1}, {reg2}");
             }
 
             if (mode.HasFlag(OperandMode.ADDRESS))
             {
-                result = this.memory.GetValue16(result);
+                return _memory[result, size];
             }
             else
             {
-                result >>= 16;
-            }
-
-            return (ushort)result;
-        }
-
-        uint GetValue32(OperandMode mode, Register register, uint value)
-        {
-            uint result = 0;
-
-            switch ((OperandMode)((uint)mode & 3U))
-            {
-                case OperandMode.REG32:
-                    result = this.registers[register];
-                    break;
-                case OperandMode.IMM32:
-                    result = value;
-                    break;
-                case OperandMode.REG32_REG32:
-                    result = this.registers[register] + this.registers[(Register)value];
-                    break;
-                case OperandMode.REG32_IMM32:
-                    result = this.registers[register] + value;
-                    break;
-                default:
-                    break;
-            }
-
-            if (mode.HasFlag(OperandMode.ADD_XX))
-            {
-                result += this.registers[Register.XX];
-            }
-
-            if (mode.HasFlag(OperandMode.ADDRESS))
-            {
-                result = this.memory.GetValue32(result);
-            }
-
-            return result;
-        }
-
-        void SetValue8(OperandMode mode, Register register, uint tail, uint value)
-        {
-            if (mode.HasFlag(OperandMode.ADD_XX))
-            {
-                throw new ArgumentException($"Operand mode is '{mode.ToString()}'");
-            }
-
-            if (mode.HasFlag(OperandMode.ADDRESS))
-            {
-                uint setVal = 0;
-
-                switch ((OperandMode)((uint)mode & 3U))
+                return size switch
                 {
-                    case OperandMode.REG32:
-                        setVal = this.registers[register];
-                        break;
-                    case OperandMode.IMM32:
-                        setVal = value;
-                        break;
-                    case OperandMode.REG32_REG32:
-                        setVal = this.registers[register] + this.registers[(Register)tail];
-                        break;
-                    case OperandMode.REG32_IMM32:
-                        setVal = this.registers[register] + tail;
-                        break;
-                    default:
-                        break;
+                    ValueSize.BYTE => result & 0xFFU,
+                    ValueSize.WORD => result & 0xFFFFU,
+                    ValueSize.DWORD => result,
+                    _ => throw new Exception($"invalid value size : {size}"),
+                };
+            }
+        }
+
+        void SetValue8(OperandMode mode, Register reg1, Register reg2, uint imm, uint value)
+        {
+            SetValue(mode, reg1, reg2, imm, value, ValueSize.BYTE);
+        }
+
+        void SetValue16(OperandMode mode, Register reg1, Register reg2, uint imm, uint value)
+        {
+            SetValue(mode, reg1, reg2, imm, value, ValueSize.WORD);
+        }
+
+        void SetValue32(OperandMode mode, Register reg1, Register reg2, uint imm, uint value)
+        {
+            SetValue(mode, reg1, reg2, imm, value, ValueSize.DWORD);
+        }
+
+        private void SetValue(OperandMode mode, Register reg1, Register reg2, uint imm, uint value, ValueSize size)
+        {
+            if (mode.HasFlag(OperandMode.ADDRESS))
+            {
+                OperandMode operandPattern = GetOperandPattern(mode);
+                uint address;
+                if (_registers.TryGetValue(reg1, out uint reg1Value) && _registers.TryGetValue(reg2, out uint reg2Value))
+                {
+                    address = operandPattern switch
+                    {
+                        OperandMode.REG => reg1Value,
+                        OperandMode.IMM => imm,
+                        OperandMode.IMM_REG => imm + reg1Value,
+                        OperandMode.IMM_NREG => imm - reg1Value,
+                        OperandMode.IMM_REG_REG => imm + reg1Value + reg2Value,
+                        OperandMode.IMM_REG_NREG => imm + reg1Value - reg2Value,
+                        OperandMode.IMM_NREG_REG => imm - reg1Value + reg2Value,
+                        OperandMode.IMM_NREG_NREG => imm - reg1Value + reg2Value,
+                        _ => throw new Exception($"invalid operand mode : {operandPattern}"),
+                    };
                 }
-                this.memory.SetValue8(setVal, value);
+                else
+                {
+                    throw new Exception($"invalid register : {operandPattern}, {reg1}, {reg2}");
+                }
+
+                _memory[address, size] = value;
             }
             else
             {
-                switch (mode)
+                if (mode != OperandMode.REG)
                 {
-                    case OperandMode.REG32:
-                        this.registers[register] &= 0x00FFFFFF;
-                        this.registers[register] |= value << 24;
-                        break;
-                    default:
-                        throw new ArgumentException($"Operand mode is '{mode.ToString()}'");
+                    throw new Exception($"invalid operand mode : {mode}");
                 }
-            }
 
-            this.flags = false;
+                _registers[reg1] = size switch
+                {
+                    ValueSize.BYTE => (_registers[reg1] & 0x00FFFFFFU) | ((value & 0xFFU) << 24),
+                    ValueSize.WORD => (_registers[reg1] & 0x0000FFFFU) | ((value & 0xFFFFU) << 16),
+                    ValueSize.DWORD => value,
+                    _ => throw new Exception($"invalid value size : {size}"),
+                };
+            }
+            _compareFlag = false;
         }
 
-        void SetValue16(OperandMode mode, Register register, uint tail, uint value)
+        private OperandMode GetOperandPattern(OperandMode mode)
         {
-            if (mode.HasFlag(OperandMode.ADD_XX))
-            {
-                throw new ArgumentException($"Operand mode is '{mode.ToString()}'");
-            }
-
-            if (mode.HasFlag(OperandMode.ADDRESS))
-            {
-                uint setVal = 0;
-
-                switch ((OperandMode)((uint)mode & 3U))
-                {
-                    case OperandMode.REG32:
-                        setVal = this.registers[register];
-                        break;
-                    case OperandMode.IMM32:
-                        setVal = value;
-                        break;
-                    case OperandMode.REG32_REG32:
-                        setVal = this.registers[register] + this.registers[(Register)tail];
-                        break;
-                    case OperandMode.REG32_IMM32:
-                        setVal = this.registers[register] + tail;
-                        break;
-                    default:
-                        break;
-                }
-                this.memory.SetValue16(setVal, value);
-            }
-            else
-            {
-                switch (mode)
-                {
-                    case OperandMode.REG32:
-                        this.registers[register] &= 0x0000FFFF;
-                        this.registers[register] |= value << 16;
-                        break;
-                    default:
-                        throw new ArgumentException($"Operand mode is '{mode.ToString()}'");
-                }
-            }
-
-            this.flags = false;
-        }
-
-        void SetValue32(OperandMode mode, Register register, uint tail, uint value)
-        {
-            if (mode.HasFlag(OperandMode.ADD_XX))
-            {
-                throw new ArgumentException($"Operand mode is '{mode.ToString()}'");
-            }
-
-            if (mode.HasFlag(OperandMode.ADDRESS))
-            {
-                uint setVal = 0;
-
-                switch ((OperandMode)((uint)mode & 3U))
-                {
-                    case OperandMode.REG32:
-                        setVal = this.registers[register];
-                        break;
-                    case OperandMode.IMM32:
-                        setVal = value;
-                        break;
-                    case OperandMode.REG32_REG32:
-                        setVal = this.registers[register] + this.registers[(Register)tail];
-                        break;
-                    case OperandMode.REG32_IMM32:
-                        setVal = this.registers[register] + tail;
-                        break;
-                    default:
-                        break;
-                }
-                this.memory.SetValue32(setVal, value);
-            }
-            else
-            {
-                switch (mode)
-                {
-                    case OperandMode.REG32:
-                        this.registers[register] = value;
-                        break;
-                    default:
-                        throw new ArgumentException($"Operand mode is '{mode.ToString()}'");
-                }
-            }
-            
-            this.flags = false;
+            return (OperandMode)((uint)mode & 0x07);
         }
 
         #endregion
@@ -652,362 +471,418 @@ namespace UbplCommon.Processor
         /// <summary>
         /// ataの処理を行います．
         /// </summary>
+        /// <param name="modrm">ModRM</param>
+        /// <param name="head">第一即値</param>
+        /// <param name="tail">第二即値</param>
         void Ata(ModRm modrm, uint head, uint tail)
         {
-            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
-            uint tailValue = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
+            OperandMode tailMode = modrm.TailMode;
+            Register tailReg1 = modrm.TailReg1;
+            Register tailReg2 = modrm.TailReg2;
 
-            SetValue32(modrm.ModeTail, modrm.RegTail, tail, tailValue + headValue);
+            uint headValue = GetValue32(modrm.HeadMode, modrm.HeadReg1, modrm.HeadReg2, head);
+            uint tailValue = GetValue32(tailMode, tailReg1, tailReg2, tail);
+
+            SetValue32(tailMode, tailReg1, tailReg2, tail, tailValue + headValue);
         }
 
         /// <summary>
         /// ntaの処理を行います．
         /// </summary>
+        /// <param name="modrm">ModRM</param>
+        /// <param name="head">第一即値</param>
+        /// <param name="tail">第二即値</param>
         void Nta(ModRm modrm, uint head, uint tail)
         {
-            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
-            uint tailValue = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
+            OperandMode tailMode = modrm.TailMode;
+            Register tailReg1 = modrm.TailReg1;
+            Register tailReg2 = modrm.TailReg2;
 
-            SetValue32(modrm.ModeTail, modrm.RegTail, tail, tailValue - headValue);
+            uint headValue = GetValue32(modrm.HeadMode, modrm.HeadReg1, modrm.HeadReg2, head);
+            uint tailValue = GetValue32(tailMode, tailReg1, tailReg2, tail);
+
+            SetValue32(tailMode, tailReg1, tailReg2, tail, tailValue - headValue);
         }
 
         /// <summary>
         /// adaの処理を行います．
         /// </summary>
+        /// <param name="modrm">ModRM</param>
+        /// <param name="head">第一即値</param>
+        /// <param name="tail">第二即値</param>
         void Ada(ModRm modrm, uint head, uint tail)
         {
-            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
-            uint tailValue = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
+            OperandMode tailMode = modrm.TailMode;
+            Register tailReg1 = modrm.TailReg1;
+            Register tailReg2 = modrm.TailReg2;
 
-            SetValue32(modrm.ModeTail, modrm.RegTail, tail, tailValue & headValue);
+            uint headValue = GetValue32(modrm.HeadMode, modrm.HeadReg1, modrm.HeadReg2, head);
+            uint tailValue = GetValue32(tailMode, tailReg1, tailReg2, tail);
+
+            SetValue32(tailMode, tailReg1, tailReg2, tail, tailValue & headValue);
         }
 
         /// <summary>
         /// ekcの処理を行います．
         /// </summary>
+        /// <param name="modrm">ModRM</param>
+        /// <param name="head">第一即値</param>
+        /// <param name="tail">第二即値</param>
         void Ekc(ModRm modrm, uint head, uint tail)
         {
-            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
-            uint tailValue = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
+            OperandMode tailMode = modrm.TailMode;
+            Register tailReg1 = modrm.TailReg1;
+            Register tailReg2 = modrm.TailReg2;
 
-            SetValue32(modrm.ModeTail, modrm.RegTail, tail, tailValue | headValue);
+            uint headValue = GetValue32(modrm.HeadMode, modrm.HeadReg1, modrm.HeadReg2, head);
+            uint tailValue = GetValue32(tailMode, tailReg1, tailReg2, tail);
+
+            SetValue32(tailMode, tailReg1, tailReg2, tail, tailValue | headValue);
         }
 
         /// <summary>
         /// dtoの処理を行います．
         /// </summary>
+        /// <param name="modrm">ModRM</param>
+        /// <param name="head">第一即値</param>
+        /// <param name="tail">第二即値</param>
         void Dto(ModRm modrm, uint head, uint tail)
         {
-            int headValue = (int)GetValue32(modrm.ModeHead, modrm.RegHead, head);
-            uint tailValue = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
-            uint value;
-            
-            if(headValue >= 32)
-            {
-                value = 0;
-            }
-            else
-            {
-                value = tailValue >> headValue;
-            }
+            OperandMode tailMode = modrm.TailMode;
+            Register tailReg1 = modrm.TailReg1;
+            Register tailReg2 = modrm.TailReg2;
 
-            SetValue32(modrm.ModeTail, modrm.RegTail, tail, value);
+            int headValue = (int)GetValue32(modrm.HeadMode, modrm.HeadReg1, modrm.HeadReg2, head);
+            uint tailValue = GetValue32(tailMode, tailReg1, tailReg2, tail);
+
+            SetValue32(tailMode, tailReg1, tailReg2, tail, headValue > 31 ? 0 : tailValue >> headValue);
         }
 
         /// <summary>
         /// droの処理を行います．
         /// </summary>
+        /// <param name="modrm">ModRM</param>
+        /// <param name="head">第一即値</param>
+        /// <param name="tail">第二即値</param>
         void Dro(ModRm modrm, uint head, uint tail)
         {
-            int headValue = (int)GetValue32(modrm.ModeHead, modrm.RegHead, head);
-            uint tailValue = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
-            uint value;
+            OperandMode tailMode = modrm.TailMode;
+            Register tailReg1 = modrm.TailReg1;
+            Register tailReg2 = modrm.TailReg2;
 
-            if (headValue >= 32)
-            {
-                value = 0;
-            }
-            else
-            {
-                value = tailValue << headValue;
-            }
+            int headValue = (int)GetValue32(modrm.HeadMode, modrm.HeadReg1, modrm.HeadReg2, head);
+            uint tailValue = GetValue32(tailMode, tailReg1, tailReg2, tail);
 
-            SetValue32(modrm.ModeTail, modrm.RegTail, tail, value);
+            SetValue32(tailMode, tailReg1, tailReg2, tail, headValue > 31 ? 0 : tailValue << headValue);
         }
 
         /// <summary>
         /// dtosnaの処理を行います．
         /// </summary>
+        /// <param name="modrm">ModRM</param>
+        /// <param name="head">第一即値</param>
+        /// <param name="tail">第二即値</param>
         void Dtosna(ModRm modrm, uint head, uint tail)
         {
-            int headValue = (int)GetValue32(modrm.ModeHead, modrm.RegHead, head);
-            uint tailValue = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
-            uint value;
+            OperandMode tailMode = modrm.TailMode;
+            Register tailReg1 = modrm.TailReg1;
+            Register tailReg2 = modrm.TailReg2;
 
-            if (headValue >= 32)
-            {
-                value = (uint)((int)tailValue >> 31);
-            }
-            else
-            {
-                value = (uint)((int)tailValue >> headValue);
-            }
+            int headValue = (int)GetValue32(modrm.HeadMode, modrm.HeadReg1, modrm.HeadReg2, head);
+            int tailValue = (int)GetValue32(tailMode, tailReg1, tailReg2, tail);
 
-            SetValue32(modrm.ModeTail, modrm.RegTail, tail, value);
+            SetValue32(tailMode, tailReg1, tailReg2, tail, (uint)(tailValue >> (headValue > 31 ? 31 : headValue)));
         }
 
         /// <summary>
         /// dalの処理を行います．
         /// </summary>
+        /// <param name="modrm">ModRM</param>
+        /// <param name="head">第一即値</param>
+        /// <param name="tail">第二即値</param>
         void Dal(ModRm modrm, uint head, uint tail)
         {
-            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
-            uint tailValue = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
+            OperandMode tailMode = modrm.TailMode;
+            Register tailReg1 = modrm.TailReg1;
+            Register tailReg2 = modrm.TailReg2;
 
-            SetValue32(modrm.ModeTail, modrm.RegTail, tail, ~(tailValue ^ headValue));
+            uint headValue = GetValue32(modrm.HeadMode, modrm.HeadReg1, modrm.HeadReg2, head);
+            uint tailValue = GetValue32(tailMode, tailReg1, tailReg2, tail);
+
+            SetValue32(tailMode, tailReg1, tailReg2, tail, ~(tailValue ^ headValue));
         }
 
         /// <summary>
         /// krzの処理を行います．
         /// </summary>
+        /// <param name="modrm">ModRM</param>
+        /// <param name="head">第一即値</param>
+        /// <param name="tail">第二即値</param>
         void Krz(ModRm modrm, uint head, uint tail)
         {
-            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
+            uint headValue = GetValue32(modrm.HeadMode, modrm.HeadReg1, modrm.HeadReg2, head);
 
-            SetValue32(modrm.ModeTail, modrm.RegTail, tail, headValue);
+            SetValue32(modrm.TailMode, modrm.TailReg1, modrm.TailReg2, tail, headValue);
         }
 
         /// <summary>
         /// malkrzの処理を行います．
         /// </summary>
+        /// <param name="modrm">ModRM</param>
+        /// <param name="head">第一即値</param>
+        /// <param name="tail">第二即値</param>
         void Malkrz(ModRm modrm, uint head, uint tail)
         {
-            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
+            uint headValue = GetValue32(modrm.HeadMode, modrm.HeadReg1, modrm.HeadReg2, head);
 
-            if(this.flags)
+            if (_compareFlag)
             {
-                SetValue32(modrm.ModeTail, modrm.RegTail, tail, headValue);
+                SetValue32(modrm.TailMode, modrm.TailReg1, modrm.TailReg2, tail, headValue);
             }
         }
 
         /// <summary>
         /// krz8iの処理を行います．
         /// </summary>
+        /// <param name="modrm">ModRM</param>
+        /// <param name="head">第一即値</param>
+        /// <param name="tail">第二即値</param>
         void Krz8i(ModRm modrm, uint head, uint tail)
         {
-            int headValue = GetValue8(modrm.ModeHead, modrm.RegHead, head);
+            int headValue = (int)GetValue8(modrm.HeadMode, modrm.HeadReg1, modrm.HeadReg2, head);
 
-            SetValue32(modrm.ModeTail, modrm.RegTail, tail, (uint)((headValue << 24) >> 24));
+            SetValue32(modrm.TailMode, modrm.TailReg1, modrm.TailReg2, tail, (uint)((headValue << 24) >> 24));
         }
 
         /// <summary>
         /// krz16iの処理を行います．
         /// </summary>
+        /// <param name="modrm">ModRM</param>
+        /// <param name="head">第一即値</param>
+        /// <param name="tail">第二即値</param>
         void Krz16i(ModRm modrm, uint head, uint tail)
         {
-            int headValue = GetValue16(modrm.ModeHead, modrm.RegHead, head);
+            int headValue = (int)GetValue16(modrm.HeadMode, modrm.HeadReg1, modrm.HeadReg2, head);
 
-            SetValue32(modrm.ModeTail, modrm.RegTail, tail, (uint)((headValue << 16) >> 16));
+            SetValue32(modrm.TailMode, modrm.TailReg1, modrm.TailReg2, tail, (uint)((headValue << 16) >> 16));
         }
 
         /// <summary>
         /// krz8cの処理を行います．
         /// </summary>
+        /// <param name="modrm">ModRM</param>
+        /// <param name="head">第一即値</param>
+        /// <param name="tail">第二即値</param>
         void Krz8c(ModRm modrm, uint head, uint tail)
         {
-            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
+            uint headValue = GetValue32(modrm.HeadMode, modrm.HeadReg1, modrm.HeadReg2, head);
 
-            SetValue8(modrm.ModeTail, modrm.RegTail, tail, headValue);
+            SetValue8(modrm.TailMode, modrm.TailReg1, modrm.TailReg2, tail, headValue);
         }
 
         /// <summary>
         /// krz16cの処理を行います．
         /// </summary>
+        /// <param name="modrm">ModRM</param>
+        /// <param name="head">第一即値</param>
+        /// <param name="tail">第二即値</param>
         void Krz16c(ModRm modrm, uint head, uint tail)
         {
-            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
+            uint headValue = GetValue32(modrm.HeadMode, modrm.HeadReg1, modrm.HeadReg2, head);
 
-            SetValue16(modrm.ModeTail, modrm.RegTail, tail, headValue);
+            SetValue16(modrm.TailMode, modrm.TailReg1, modrm.TailReg2, tail, headValue);
         }
 
         /// <summary>
-        /// fi xtlonysの処理を行います．
+        /// mteの処理を行います．
         /// </summary>
-        void Xtlonys(ModRm modrm, uint head, uint tail)
+        /// <param name="modrm">ModRM</param>
+        /// <param name="head">第一即値</param>
+        /// <param name="tail">第二即値</param>
+        void Mte(ModRm modrm, uint head, uint tail)
         {
-            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
-            uint tailValue = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
-
-            this.flags = headValue <= tailValue;
+            _headTemporary = GetValue32(modrm.HeadMode, modrm.HeadReg1, modrm.HeadReg2, head);
+            _tailTemporary = GetValue32(modrm.TailMode, modrm.TailReg1, modrm.TailReg2, tail);
         }
 
         /// <summary>
-        /// fi xylonysの処理を行います．
+        /// anfの処理を行います．
         /// </summary>
-        void Xylonys(ModRm modrm, uint head, uint tail)
+        /// <param name="modrm">ModRM</param>
+        /// <param name="head">第一即値</param>
+        /// <param name="tail">第二即値</param>
+        void Anf(ModRm modrm, uint head, uint tail)
         {
-            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
-            uint tailValue = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
-
-            this.flags = headValue < tailValue;
+            SetValue32(modrm.HeadMode, modrm.HeadReg1, modrm.HeadReg2, head, _headTemporary);
+            SetValue32(modrm.TailMode, modrm.TailReg1, modrm.TailReg2, tail, _tailTemporary);
         }
 
         /// <summary>
         /// fi cloの処理を行います．
         /// </summary>
+        /// <param name="modrm">ModRM</param>
+        /// <param name="head">第一即値</param>
+        /// <param name="tail">第二即値</param>
         void Clo(ModRm modrm, uint head, uint tail)
         {
-            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
-            uint tailValue = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
+            uint headValue = GetValue32(modrm.HeadMode, modrm.HeadReg1, modrm.HeadReg2, head);
+            uint tailValue = GetValue32(modrm.TailMode, modrm.TailReg1, modrm.TailReg2, tail);
 
-            this.flags = headValue == tailValue;
+            _compareFlag = headValue == tailValue;
         }
 
         /// <summary>
         /// fi nivの処理を行います．
         /// </summary>
+        /// <param name="modrm">ModRM</param>
+        /// <param name="head">第一即値</param>
+        /// <param name="tail">第二即値</param>
         void Niv(ModRm modrm, uint head, uint tail)
         {
-            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
-            uint tailValue = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
+            uint headValue = GetValue32(modrm.HeadMode, modrm.HeadReg1, modrm.HeadReg2, head);
+            uint tailValue = GetValue32(modrm.TailMode, modrm.TailReg1, modrm.TailReg2, tail);
 
-            this.flags = headValue != tailValue;
+            _compareFlag = headValue != tailValue;
         }
 
         /// <summary>
-        /// xtloの処理を行います．
+        /// fi xtlonysの処理を行います．
         /// </summary>
+        /// <param name="modrm">ModRM</param>
+        /// <param name="head">第一即値</param>
+        /// <param name="tail">第二即値</param>
+        void Xtlonys(ModRm modrm, uint head, uint tail)
+        {
+            uint headValue = GetValue32(modrm.HeadMode, modrm.HeadReg1, modrm.HeadReg2, head);
+            uint tailValue = GetValue32(modrm.TailMode, modrm.TailReg1, modrm.TailReg2, tail);
+
+            _compareFlag = headValue <= tailValue;
+        }
+
+        /// <summary>
+        /// fi xylonysの処理を行います．
+        /// </summary>
+        /// <param name="modrm">ModRM</param>
+        /// <param name="head">第一即値</param>
+        /// <param name="tail">第二即値</param>
+        void Xylonys(ModRm modrm, uint head, uint tail)
+        {
+            uint headValue = GetValue32(modrm.HeadMode, modrm.HeadReg1, modrm.HeadReg2, head);
+            uint tailValue = GetValue32(modrm.TailMode, modrm.TailReg1, modrm.TailReg2, tail);
+
+            _compareFlag = headValue < tailValue;
+        }
+
+        /// <summary>
+        /// fi xtloの処理を行います．
+        /// </summary>
+        /// <param name="modrm">ModRM</param>
+        /// <param name="head">第一即値</param>
+        /// <param name="tail">第二即値</param>
         void Xtlo(ModRm modrm, uint head, uint tail)
         {
-            int headValue = (int)GetValue32(modrm.ModeHead, modrm.RegHead, head);
-            int tailValue = (int)GetValue32(modrm.ModeTail, modrm.RegTail, tail);
+            int headValue = (int)GetValue32(modrm.HeadMode, modrm.HeadReg1, modrm.HeadReg2, head);
+            int tailValue = (int)GetValue32(modrm.TailMode, modrm.TailReg1, modrm.TailReg2, tail);
 
-            this.flags = headValue <= tailValue;
+            _compareFlag = headValue <= tailValue;
         }
 
         /// <summary>
-        /// xyloの処理を行います．
+        /// fi xylonysの処理を行います．
         /// </summary>
+        /// <param name="modrm">ModRM</param>
+        /// <param name="head">第一即値</param>
+        /// <param name="tail">第二即値</param>
         void Xylo(ModRm modrm, uint head, uint tail)
         {
-            int headValue = (int)GetValue32(modrm.ModeHead, modrm.RegHead, head);
-            int tailValue = (int)GetValue32(modrm.ModeTail, modrm.RegTail, tail);
+            int headValue = (int)GetValue32(modrm.HeadMode, modrm.HeadReg1, modrm.HeadReg2, head);
+            int tailValue = (int)GetValue32(modrm.TailMode, modrm.TailReg1, modrm.TailReg2, tail);
 
-            this.flags = headValue < tailValue;
+            _compareFlag = headValue < tailValue;
+        }
+
+        /// <summary>
+        /// latの処理を行います．
+        /// </summary>
+        /// <param name="modrm">ModRM</param>
+        /// <param name="head">第一即値</param>
+        /// <param name="tail">第二即値</param>
+        void Lat(ModRm modrm, uint head, uint tail)
+        {
+            uint headValue = GetValue32(modrm.HeadMode, modrm.HeadReg1, modrm.HeadReg2, head);
+            ulong tailValue = GetValue32(modrm.TailMode, modrm.TailReg1, modrm.TailReg2, tail);
+
+            ulong temp = headValue * tailValue;
+            _headTemporary = (uint)temp;
+            _tailTemporary = (uint)(temp >> 32);
+        }
+
+        /// <summary>
+        /// latsnaの処理を行います．
+        /// </summary>
+        /// <param name="modrm">ModRM</param>
+        /// <param name="head">第一即値</param>
+        /// <param name="tail">第二即値</param>
+        void Latsna(ModRm modrm, uint head, uint tail)
+        {
+            int headValue = (int)GetValue32(modrm.HeadMode, modrm.HeadReg1, modrm.HeadReg2, head);
+            long tailValue = (int)GetValue32(modrm.TailMode, modrm.TailReg1, modrm.TailReg2, tail);
+
+            long temp = headValue * tailValue;
+            _headTemporary = (uint)temp;
+            _tailTemporary = (uint)(temp >> 32); ;
+        }
+
+        /// <summary>
+        /// kakの処理を行います．
+        /// </summary>
+        /// <param name="modrm">ModRM</param>
+        /// <param name="head">第一即値</param>
+        /// <param name="tail">第二即値</param>
+        void Kak(ModRm modrm, uint head, uint tail)
+        {
+            uint headValue = GetValue32(modrm.HeadMode, modrm.HeadReg1, modrm.HeadReg2, head);
+            ulong tailValue = GetValue32(modrm.TailMode, modrm.TailReg1, modrm.TailReg2, tail);
+
+            ulong temp = headValue / tailValue;
+            _headTemporary = (uint)temp;
+            _tailTemporary = (uint)(temp >> 32);
+        }
+
+        /// <summary>
+        /// kaksnaの処理を行います．
+        /// </summary>
+        /// <param name="modrm">ModRM</param>
+        /// <param name="head">第一即値</param>
+        /// <param name="tail">第二即値</param>
+        void Kaksna(ModRm modrm, uint head, uint tail)
+        {
+            int headValue = (int)GetValue32(modrm.HeadMode, modrm.HeadReg1, modrm.HeadReg2, head);
+            long tailValue = (int)GetValue32(modrm.TailMode, modrm.TailReg1, modrm.TailReg2, tail);
+
+            long temp = headValue / tailValue;
+            _headTemporary = (uint)temp;
+            _tailTemporary = (uint)(temp >> 32); ;
         }
 
         /// <summary>
         /// fnxの処理を行います．
         /// これは"inj op1 xx op2"の動作と等しくなります．
         /// </summary>
+        /// <param name="modrm">ModRM</param>
+        /// <param name="head">第一即値</param>
+        /// <param name="tail">第二即値</param>
         void Fnx(ModRm modrm, uint head, uint tail)
         {
-            uint xx = this.registers[Register.XX];
-            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
+            uint value = _registers[Register.XX];
+            _registers[Register.XX] = GetValue32(modrm.HeadMode, modrm.HeadReg1, modrm.HeadReg2, head);
 
-            this.registers[Register.XX] = headValue;
-            SetValue32(modrm.ModeTail, modrm.RegTail, tail, xx);
+            SetValue32(modrm.TailMode, modrm.TailReg1, modrm.TailReg2, tail, value);
         }
 
-        /// <summary>
-        /// mteの処理を行います．
-        /// krz64 (head &lt;&lt; 32 | tail) tmp と等しくなります．
-        /// </summary>
-        void Mte(ModRm modrm, uint head, uint tail)
-        {
-            ulong headValue = (ulong)GetValue32(modrm.ModeHead, modrm.RegHead, head);
-            uint tailValue = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
-
-            this.temporary = (headValue << 32) | tailValue;
-        }
-
-        /// <summary>
-        /// anfの処理を行います．
-        /// krz ((tmp >> 32) & 0x0000FFFF) head, krz (tmp & 0x0000FFFF) tailと等しくなります．
-        /// </summary>
-        void Anf(ModRm modrm, uint head, uint tail)
-        {
-            var modeTail = modrm.ModeTail;
-            var regTail = modrm.RegTail;
-
-            if (modeTail.HasFlag(OperandMode.ADDRESS))
-            {
-                modeTail = OperandMode.ADDR_IMM32;
-                regTail = Register.F0;
-                tail = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
-            }
-
-            SetValue32(modrm.ModeHead, modrm.RegHead, head, (uint)(this.temporary >> 32));
-            SetValue32(modeTail, regTail, tail, (uint)(this.temporary));
-        }
-
-        /// <summary>
-        /// latの処理を行います．
-        /// </summary>
-        void Lat(ModRm modrm, uint head, uint tail)
-        {
-            ulong headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
-            ulong tailValue = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
-
-            this.temporary = tailValue * headValue;
-        }
-
-        /// <summary>
-        /// latsnaの処理を行います．
-        /// </summary>
-        void Latsna(ModRm modrm, uint head, uint tail)
-        {
-            long headValue = (int)GetValue32(modrm.ModeHead, modrm.RegHead, head);
-            long tailValue = (int)GetValue32(modrm.ModeTail, modrm.RegTail, tail);
-
-            this.temporary = (ulong)(tailValue * headValue);
-        }
-
-        /// <summary>
-        /// kakの処理を行います．
-        /// </summary>
-        void Kak(ModRm modrm, uint head, uint tail)
-        {
-            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
-            try
-            {
-                this.temporary = ((this.temporary % headValue) << 32) | (this.temporary / headValue);
-                SetValue32(modrm.ModeTail, modrm.RegTail, tail, 0);
-            }
-            catch (ArithmeticException)
-            {
-                SetValue32(modrm.ModeTail, modrm.RegTail, tail, 1);
-            }
-        }
-
-        /// <summary>
-        /// kaksnaの処理を行います．
-        /// </summary>
-        void Kaksna(ModRm modrm, uint head, uint tail)
-        {
-            int headValue = (int)GetValue32(modrm.ModeHead, modrm.RegHead, head);
-            try
-            {
-                ulong div = (ulong)((long)this.temporary / headValue);
-                ulong rem = (ulong)((long)this.temporary % headValue);
-                this.temporary = (rem << 32) | div;
-                SetValue32(modrm.ModeTail, modrm.RegTail, tail, 0);
-            }
-            catch (ArithmeticException)
-            {
-                SetValue32(modrm.ModeTail, modrm.RegTail, tail, 1);
-            }
-        }
-
-        /// <summary>
-        /// klonの処理付行います．
-        /// </summary>
-        /// <param name="modrm"></param>
-        /// <param name="head"></param>
-        /// <param name="tail"></param>
         void Klon(ModRm modrm, uint head, uint tail)
         {
-            uint headValue = GetValue32(modrm.ModeHead, modrm.RegHead, head);
+            uint headValue = GetValue32(modrm.HeadMode, modrm.HeadReg1, modrm.HeadReg2, head);
 
             switch (headValue)
             {
@@ -1015,11 +890,11 @@ namespace UbplCommon.Processor
                     {
 
                         int value = Console.Read();
-                        
+
                         if (value == '\r' || value == '\n')
                         {
                             value = Console.In.Peek();
-                            if(value == '\n')
+                            if (value == '\n')
                             {
                                 Console.Read();
                             }
@@ -1027,27 +902,27 @@ namespace UbplCommon.Processor
                             value = Console.Read();
                         }
 
-                        SetValue8(modrm.ModeTail, modrm.RegTail, tail, CharacterCode.ToByte((char)value));
+                        SetValue8(modrm.TailMode, modrm.TailReg1, modrm.TailReg2, tail, CharacterCode.ToByte((char)value));
                     }
                     break;
                 case 0x81:
                     {
-                        uint tailValue = GetValue8(modrm.ModeTail, modrm.RegTail, tail);
+                        uint tailValue = GetValue8(modrm.TailMode, modrm.TailReg1, modrm.TailReg2, tail);
                         char c = CharacterCode.ToChar(tailValue);
                         Console.Write(c == '\n' ? Environment.NewLine : c.ToString());
                     }
                     break;
                 case 0xFF:
                     {
-                        uint tailValue = GetValue32(modrm.ModeTail, modrm.RegTail, tail);
-                        debugBuffer.Add(tailValue.ToString());
+                        uint tailValue = GetValue32(modrm.TailMode, modrm.TailReg1, modrm.TailReg2, tail);
+                        _debugBuffer.Add(tailValue.ToString());
                     }
                     break;
                 default:
                     break;
             }
         }
-        
+
         #endregion
     }
 }

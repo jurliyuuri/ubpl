@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Collections.ObjectModel;
 
 namespace UbplCommon.Processor
@@ -12,19 +9,19 @@ namespace UbplCommon.Processor
         /// <summary>
         /// メモリ内容
         /// </summary>
-        private readonly IDictionary<uint, uint> memory;
+        private readonly IDictionary<uint, uint> _data;
 
         /// <summary>
         /// メモリが未初期化だった場合に設定されている値を作成するRandom
         /// </summary>
-        readonly Random random;
+        readonly Random _random;
 
         /// <summary>
         /// メモリの内容を表す読み込み専用のDictionary
         /// </summary>
         public IReadOnlyDictionary<uint, uint> Binaries
         {
-            get => new ReadOnlyDictionary<uint, uint>(this.memory);
+            get => new ReadOnlyDictionary<uint, uint>(_data);
         }
 
         /// <summary>
@@ -32,74 +29,86 @@ namespace UbplCommon.Processor
         /// </summary>
         public Memory()
         {
-            this.memory = new Dictionary<uint, uint>();
-            this.random = new Random();
+            _data = new Dictionary<uint, uint>();
+            _random = new Random();
         }
 
         /// <summary>
-        /// 指定されたアドレスの値を返します．
+        /// 指定されたアドレスの値を取得，またはアドレスに値を設定します．
         /// 未使用のアドレスが指定された場合にはランダムな値を返します．
-        /// また，アドレスの下位2bitの値は無視されます．
+        /// また，sizeがDWORDの場合にはアドレスの下位2bitの値が，
+        /// WORDの場合にはアドレスの下位1bitの値が無視されます．
         /// </summary>
         /// <param name="address">アドレス</param>
+        /// <param name="size">設定する値のビット幅</param>
         /// <returns></returns>
-        public uint this[uint address]
+        public uint this[uint address, ValueSize size = ValueSize.DWORD]
         {
             get
             {
-                return GetValue32(address);
+                return size switch
+                {
+                    ValueSize.BYTE => GetValue8(address),
+                    ValueSize.WORD => GetValue16(address),
+                    _ => GetValue32(address),
+                };
             }
             set
             {
-                SetValue32(address, value);
+                switch (size)
+                {
+                    case ValueSize.BYTE:
+                        SetValue8(address, value);
+                        break;
+                    case ValueSize.WORD:
+                        SetValue16(address, value);
+                        break;
+                    case ValueSize.DWORD:
+                    default:
+                        SetValue32(address, value);
+                        break;
+                }
             }
         }
 
-        public byte GetValue8(uint address)
+        public uint GetValue8(uint address)
         {
             uint readAddress = address & 0xFFFFFFFCU;
             uint pos = address & 0x03U;
 
-            if (!this.memory.ContainsKey(readAddress))
+            if (!_data.ContainsKey(readAddress))
             {
-                this.memory[readAddress] = (uint)this.random.Next(int.MinValue, int.MaxValue);
+                _data[readAddress] = (uint)_random.Next(int.MinValue, int.MaxValue);
+            }
+
+            return pos switch
+            {
+                0 => (_data[readAddress] >> 24) & 0xFFU,
+                1 => (_data[readAddress] >> 16) & 0xFFU,
+                2 => (_data[readAddress] >> 8) & 0xFFU,
+                _ => _data[readAddress] & 0xFFU,
+            };
+        }
+
+        public uint GetValue16(uint address)
+        {
+            uint readAddress = address & 0xFFFFFFFCU;
+            uint pos = address & 0x03U;
+
+            if (!_data.ContainsKey(readAddress))
+            {
+                _data[readAddress] = (uint)_random.Next(int.MinValue, int.MaxValue);
             }
 
             switch (pos)
             {
                 case 0:
-                    return (byte)(this.memory[readAddress] >> 24);
                 case 1:
-                    return (byte)(this.memory[readAddress] >> 16);
-                case 2:
-                    return (byte)(this.memory[readAddress] >> 8);
-                case 3:
-                    return (byte)(this.memory[readAddress]);
-                default:
-                    return (byte)(this.memory[readAddress]);
-            }
-        }
-
-        public ushort GetValue16(uint address)
-        {
-            uint readAddress = address & 0xFFFFFFFCU;
-            uint pos = address & 0x03U;
-
-            if (!this.memory.ContainsKey(readAddress))
-            {
-                this.memory[readAddress] = (uint)this.random.Next(int.MinValue, int.MaxValue);
-            }
-
-            switch (pos)
-            {
-                case 0:
-                case 1:
-                    return (ushort)(this.memory[readAddress] >> 16);
+                    return (_data[readAddress] >> 16) & 0xFFFFU;
                 case 2:
                 case 3:
-                    return (ushort)(this.memory[readAddress]);
                 default:
-                    return (ushort)(this.memory[readAddress]);
+                    return _data[readAddress] & 0xFFFFU;
             }
         }
 
@@ -107,12 +116,12 @@ namespace UbplCommon.Processor
         {
             uint readAddress = address & 0xFFFFFFFCU;
 
-            if (!this.memory.ContainsKey(readAddress))
+            if (!_data.ContainsKey(readAddress))
             {
-                this.memory[readAddress] = (uint)this.random.Next(int.MinValue, int.MaxValue);
+                _data[readAddress] = (uint)_random.Next(int.MinValue, int.MaxValue);
             }
-            
-            return this.memory[readAddress];
+
+            return _data[readAddress];
         }
 
         public void SetValue8(uint address, uint value)
@@ -120,30 +129,29 @@ namespace UbplCommon.Processor
             uint readAddress = address & 0xFFFFFFFCU;
             uint pos = address & 0x03U;
 
-            if (!this.memory.ContainsKey(readAddress))
+            if (!_data.ContainsKey(readAddress))
             {
-                this.memory[readAddress] = (uint)this.random.Next(int.MinValue, int.MaxValue);
+                _data[readAddress] = (uint)_random.Next(int.MinValue, int.MaxValue);
             }
 
             switch (pos)
             {
                 case 0:
-                    this.memory[readAddress] &= 0x00FFFFFFU;
-                    this.memory[readAddress] |= value << 24;
+                    _data[readAddress] &= 0x00FFFFFFU;
+                    _data[readAddress] |= (value & 0xFFU) << 24;
                     break;
                 case 1:
-                    this.memory[readAddress] &= 0xFF00FFFFU;
-                    this.memory[readAddress] |= (value & 0xFFU) << 16;
+                    _data[readAddress] &= 0xFF00FFFFU;
+                    _data[readAddress] |= (value & 0xFFU) << 16;
                     break;
                 case 2:
-                    this.memory[readAddress] &= 0xFFFF00FFU;
-                    this.memory[readAddress] |= (value & 0xFFU) << 8;
+                    _data[readAddress] &= 0xFFFF00FFU;
+                    _data[readAddress] |= (value & 0xFFU) << 8;
                     break;
                 case 3:
-                    this.memory[readAddress] &= 0xFFFFFF00U;
-                    this.memory[readAddress] |= value & 0xFFU;
-                    break;
                 default:
+                    _data[readAddress] &= 0xFFFFFF00U;
+                    _data[readAddress] |= value & 0xFFU;
                     break;
             }
         }
@@ -153,24 +161,23 @@ namespace UbplCommon.Processor
             uint readAddress = address & 0xFFFFFFFCU;
             uint pos = address & 0x03U;
 
-            if(!this.memory.ContainsKey(readAddress))
+            if (!_data.ContainsKey(readAddress))
             {
-                this.memory[readAddress] = (uint)this.random.Next(int.MinValue, int.MaxValue);
+                _data[readAddress] = (uint)_random.Next(int.MinValue, int.MaxValue);
             }
 
             switch (pos)
             {
                 case 0:
                 case 1:
-                    this.memory[readAddress] &= 0x0000FFFFU;
-                    this.memory[readAddress] |= (value & 0xFFFFU) << 16;
+                    _data[readAddress] &= 0x0000FFFFU;
+                    _data[readAddress] |= (value & 0xFFFFU) << 16;
                     break;
                 case 2:
                 case 3:
-                    this.memory[readAddress] &= 0xFFFF0000U;
-                    this.memory[readAddress] |= value & 0xFFFFU;
-                    break;
                 default:
+                    _data[readAddress] &= 0xFFFF0000U;
+                    _data[readAddress] |= value & 0xFFFFU;
                     break;
             }
         }
@@ -179,7 +186,7 @@ namespace UbplCommon.Processor
         {
             uint readAddress = address & 0xFFFFFFFCU;
 
-            this.memory[readAddress] = value;
+            _data[readAddress] = value;
         }
     }
 }

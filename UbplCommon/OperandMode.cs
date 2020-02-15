@@ -1,32 +1,29 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace UbplCommon
 {
     public enum OperandMode : uint
     {
-        REG32 = 0U,
-        IMM32 = 1U,
-        REG32_REG32 = 2U,
-        REG32_IMM32 = 3U,
+        REG = 0U,
+        IMM = 1U,
+        IMM_REG = 2U,
+        IMM_NREG = 3U,
+        IMM_REG_REG = 4U,
+        IMM_REG_NREG = 5U,
+        IMM_NREG_REG = 6U,
+        IMM_NREG_NREG = 7U,
 
-        XX_REG32 = ADD_XX | REG32,
-        XX_IMM32 = ADD_XX | IMM32,
-        XX_REG32_IMM32 = ADD_XX | REG32_IMM32,
-
-        ADDR_REG32 = ADDRESS | REG32,
-        ADDR_IMM32 = ADDRESS | IMM32,
-        ADDR_REG32_REG32 = ADDRESS | REG32_REG32,
-        ADDR_REG32_IMM32 = ADDRESS | REG32_IMM32,
-
-        ADDR_XX_REG32 = ADDRESS | ADD_XX | REG32,
-        ADDR_XX_IMM32 = ADDRESS | ADD_XX | IMM32,
-        ADDR_XX_REG32_IMM32 = ADDRESS | ADD_XX | REG32_IMM32,
+        ADDR_REG = ADDRESS | REG,
+        ADDR_IMM = ADDRESS | IMM,
+        ADDR_IMM_REG = ADDRESS | IMM_REG,
+        ADDR_IMM_NREG = ADDRESS | IMM_NREG,
+        ADDR_IMM_REG_REG = ADDRESS | IMM_REG_REG,
+        ADDR_IMM_REG_NREG = ADDRESS | IMM_REG_NREG,
+        ADDR_IMM_NREG_REG = ADDRESS | IMM_NREG_REG,
+        ADDR_IMM_NREG_NREG = ADDRESS | IMM_NREG_NREG,
         
-        ADD_XX = 0x10U,
-        ADDRESS = 0x20U,
+        ADDRESS = 0x10U,
     }
 }

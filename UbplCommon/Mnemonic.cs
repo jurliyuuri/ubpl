@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
 
 namespace UbplCommon
 {
@@ -12,82 +9,82 @@ namespace UbplCommon
     public enum Mnemonic : uint
     {
         /// <summary>
-        /// 加算
-        /// </summary>
-        ATA = 0x00000000,
-
-        /// <summary>
-        /// 減算
-        /// </summary>
-        NTA = 0x00000001,
-
-        /// <summary>
-        /// ビット積
-        /// </summary>
-        ADA = 0x00000002,
-
-        /// <summary>
-        /// ビット和
-        /// </summary>
-        EKC = 0x00000003,
-
-        /// <summary>
-        /// 論理右シフト
-        /// </summary>
-        DTO = 0x00000004,
-
-        /// <summary>
-        /// 左シフト
-        /// </summary>
-        DRO = 0x00000005,
-
-        /// <summary>
-        /// 算術右シフト
-        /// </summary>
-        DTOSNA = 0x00000006,
-
-        /// <summary>
-        /// ビットxnor
-        /// </summary>
-        DAL = 0x00000007,
-
-        /// <summary>
         /// コピー
         /// </summary>
-        KRZ = 0x00000008,
+        KRZ = 0x00000000,
 
         /// <summary>
         /// フラグが立っているときのみkrzを行う
         /// </summary>
-        MALKRZ = 0x00000009,
+        MALKRZ = 0x00000001,
 
         /// <summary>
         /// 第一オペランドの上位8bitを32bit符号拡張してkrzを行う
         /// </summary>
-        KRZ8I = 0x0000000A,
+        KRZ8I = 0x00000002,
 
         /// <summary>
         /// 第一オペランドの上位16bitを32bit符号拡張してkrzを行う
         /// </summary>
-        KRZ16I = 0x0000000B,
+        KRZ16I = 0x00000003,
 
         /// <summary>
         /// 第一オペランドの下位8bit取得し，第二オペランドの上位8bitに設定する
         /// </summary>
-        KRZ8C = 0x0000000C,
+        KRZ8C = 0x00000004,
 
         /// <summary>
         /// 第一オペランドの下位16bit取得し，第二オペランドの上位16bitに設定する
         /// </summary>
-        KRZ16C = 0x0000000D,
+        KRZ16C = 0x00000005,
 
         /// <summary>
-        /// krz64 head &lt;&lt; 32 | tail tmp と同等
+        /// 加算
+        /// </summary>
+        ATA = 0x00000006,
+
+        /// <summary>
+        /// 減算
+        /// </summary>
+        NTA = 0x00000007,
+
+        /// <summary>
+        /// ビット積
+        /// </summary>
+        ADA = 0x00000008,
+
+        /// <summary>
+        /// ビット和
+        /// </summary>
+        EKC = 0x00000009,
+
+        /// <summary>
+        /// 論理右シフト
+        /// </summary>
+        DTO = 0x0000000A,
+
+        /// <summary>
+        /// 左シフト
+        /// </summary>
+        DRO = 0x0000000B,
+
+        /// <summary>
+        /// 算術右シフト
+        /// </summary>
+        DTOSNA = 0x0000000C,
+
+        /// <summary>
+        /// ビットxnor
+        /// </summary>
+        DAL = 0x0000000D,
+
+        /// <summary>
+        /// headとtailをそれぞれ内部レジスタに保持する．
         /// </summary>
         MTE = 0x0000000E,
 
         /// <summary>
-        /// krz ((tmp &gt;&gt; 32) &amp; 0x0000FFFF) head, krz (tmp &amp; 0x0000FFFF) tailと同等
+        /// 内部レジスタの値をheadとtailに設定する．
         /// </summary>
         ANF = 0x0000000F,
 
@@ -146,7 +143,7 @@ namespace UbplCommon
         /// inj A xx Bと同等
         /// </summary>
         FNX = 0x00000020,
-        
+
         /// <summary>
         /// I/O命令
         /// </summary>

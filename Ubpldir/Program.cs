@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using UbplCommon;
 using UbplCommon.Translator;
 
@@ -19,7 +15,7 @@ namespace Ubpldir
                 Environment.Exit(1);
             }
 
-            using(var stream = File.Open(args[0], FileMode.Open))
+            using (var stream = File.Open(args[0], FileMode.Open))
             {
                 var binary = new byte[16];
 
@@ -29,12 +25,12 @@ namespace Ubpldir
                     uint[] values = ToUint(binary);
                     Mnemonic mnemonic = (Mnemonic)values[0];
                     ModRm modRm = new ModRm(values[1]);
-                    string head = ToOperandString(modRm.ModeHead, modRm.RegHead, values[2]);
-                    string tail = ToOperandString(modRm.ModeTail, modRm.RegTail, values[3]);
+                    string head = ToOperandString(modRm.HeadMode, modRm.HeadReg1, modRm.HeadReg2, values[2]);
+                    string tail = ToOperandString(modRm.TailMode, modRm.TailReg1, modRm.TailReg2, values[3]);
 
                     Console.Write("{0:X08}: ", index);
                     Console.Write("{0:X08} {1:X08} {2:X08} {3:X08} | ", values[0], values[1], values[2], values[3]);
-                    Console.WriteLine("{0} {1} {2}", mnemonic, head, tail);
+                    Console.WriteLine("{0,-6} {1} {2}", mnemonic, head, tail);
 
                     index += 16;
                 }
@@ -56,65 +52,41 @@ namespace Ubpldir
             return values;
         }
 
-        static string ToOperandString(OperandMode operandMode, Register register, uint value)
+        static string ToOperandString(OperandMode operandMode, Register reg1, Register reg2, uint value)
         {
             string str = "";
-            int signed = (int)value;
 
-            switch (operandMode)
+            switch ((operandMode & ~OperandMode.ADDRESS))
             {
-                case OperandMode.REG32:
-                case OperandMode.ADDR_REG32:
-                case OperandMode.XX_REG32:
-                case OperandMode.ADDR_XX_REG32:
-                    str = register.ToString();
+                case OperandMode.REG:
+                    str = reg1.ToString();
                     break;
-                case OperandMode.XX_IMM32:
-                case OperandMode.ADDR_XX_IMM32:
-                    str = signed.ToString();
-                    break;
-                case OperandMode.IMM32:
-                case OperandMode.ADDR_IMM32:
+                case OperandMode.IMM:
                     str = value.ToString();
                     break;
-                case OperandMode.REG32_REG32:
-                case OperandMode.ADDR_REG32_REG32:
-                    str = register + "+" + (Register)value;
+                case OperandMode.IMM_REG:
+                    str = value + "+" + reg1;
                     break;
-                case OperandMode.REG32_IMM32:
-                case OperandMode.ADDR_REG32_IMM32:
-                case OperandMode.XX_REG32_IMM32:
-                case OperandMode.ADDR_XX_REG32_IMM32:
-                    if(signed < 0)
-                    {
-                        str = register + "" + signed;
-                    }
-                    else
-                    {
-                        str = register + "+" + signed;
-                    }
+                case OperandMode.IMM_NREG:
+                    str = value + "|" + reg1;
+                    break;
+                case OperandMode.IMM_REG_REG:
+                    str = value + "+" + reg1 + "+" + reg2;
+                    break;
+                case OperandMode.IMM_REG_NREG:
+                    str = value + "+" + reg1 + "|" + reg2;
+                    break;
+                case OperandMode.IMM_NREG_REG:
+                    str = value + "|" + reg1 + "+" + reg2;
+                    break;
+                case OperandMode.IMM_NREG_NREG:
+                    str = value + "|" + reg1 + "|" + reg2;
                     break;
                 default:
                     break;
             }
 
-            if(operandMode.HasFlag(OperandMode.ADD_XX))
-            {
-                if(string.IsNullOrEmpty(str))
-                {
-                    str = Register.XX.ToString();
-                }
-                else if(str[0] == '-')
-                {
-                    str = Register.XX + str;
-                }
-                else
-                {
-                    str = Register.XX +"+"+ str;
-                }
-            }
-
-            if(operandMode.HasFlag(OperandMode.ADDRESS))
+            if (operandMode.HasFlag(OperandMode.ADDRESS))
             {
                 str += "@";
             }

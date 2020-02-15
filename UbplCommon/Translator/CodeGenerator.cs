@@ -4,41 +4,41 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace UbplCommon.Translator
 {
     public abstract class CodeGenerator
     {
-        private readonly IList<Code> codeList;
-        private readonly IList<JumpLabel> labels;
-        private readonly IList<LifemValue> lifemList;
+        private readonly IList<Code> _codes;
+        private readonly IList<JumpLabel> _labels;
+        private readonly IList<LifemValue> _lifemValues;
 
-        protected static readonly Operand F0 = new Operand(Register.F0, null, 0U);
-        protected static readonly Operand F1 = new Operand(Register.F1, null, 0U);
-        protected static readonly Operand F2 = new Operand(Register.F2, null, 0U);
-        protected static readonly Operand F3 = new Operand(Register.F3, null, 0U);
-        protected static readonly Operand F4 = new Operand(Register.F4, null, 0U);
-        protected static readonly Operand F5 = new Operand(Register.F5, null, 0U);
-        protected static readonly Operand F6 = new Operand(Register.F6, null, 0U);
-        protected static readonly Operand XX = new Operand(Register.XX, null, 0U);
+        protected static readonly Operand F0 = Operand.F0;
+        protected static readonly Operand F1 = Operand.F1;
+        protected static readonly Operand F2 = Operand.F2;
+        protected static readonly Operand F3 = Operand.F3;
+        protected static readonly Operand F4 = Operand.F4;
+        protected static readonly Operand F5 = Operand.F5;
+        protected static readonly Operand F6 = Operand.F6;
+        protected static readonly Operand XX = Operand.XX;
+        protected static readonly Operand ZERO = Operand.ZERO;
 
-        protected static readonly FiType XTLO = FiType.XTLO;
-        protected static readonly FiType XYLO = FiType.XYLO;
         protected static readonly FiType CLO = FiType.CLO;
-        protected static readonly FiType XOLO = FiType.XOLO;
-        protected static readonly FiType LLO = FiType.LLO;
         protected static readonly FiType NIV = FiType.NIV;
         protected static readonly FiType XTLONYS = FiType.XTLONYS;
         protected static readonly FiType XYLONYS = FiType.XYLONYS;
         protected static readonly FiType XOLONYS = FiType.XOLONYS;
         protected static readonly FiType LLONYS = FiType.LLONYS;
+        protected static readonly FiType XTLO = FiType.XTLO;
+        protected static readonly FiType XYLO = FiType.XYLO;
+        protected static readonly FiType XOLO = FiType.XOLO;
+        protected static readonly FiType LLO = FiType.LLO;
 
         protected CodeGenerator()
         {
-            codeList = new List<Code>();
-            labels = new List<JumpLabel>();
-            lifemList = new List<LifemValue>();
+            _codes = new List<Code>();
+            _labels = new List<JumpLabel>();
+            _lifemValues = new List<LifemValue>();
         }
 
         protected Operand Seti(Operand opd)
@@ -46,14 +46,9 @@ namespace UbplCommon.Translator
             return opd.ToAddressing();
         }
 
-        protected Operand Seti(JumpLabel label)
+        protected Operand Seti(uint value)
         {
-            return label.ToAddressing();
-        }
-
-        protected Operand Seti(uint val)
-        {
-            return new Operand(val, true);
+            return new Operand(value, true);
         }
 
         protected Operand ToOperand(uint val, bool address = false)
@@ -67,10 +62,8 @@ namespace UbplCommon.Translator
         /// <param name="fileName">ファイル名</param>
         public void Write(string fileName)
         {
-            using (var writer = new BinaryWriter(File.OpenWrite(fileName)))
-            {
-                writer.Write(ToBinaryCode().ToArray());
-            }
+            using var writer = new BinaryWriter(File.OpenWrite(fileName));
+            writer.Write(ToBinaryCode().ToArray());
         }
 
         /// <summary>
@@ -80,207 +73,160 @@ namespace UbplCommon.Translator
         public IReadOnlyList<byte> ToBinaryCode()
         {
             List<byte> binaryCode = new List<byte>();
-            
-            int labelLifemCount = this.lifemList.Where(x => x.SourceLabel != null).Count();
-            int count = (this.codeList.Count + labelLifemCount + 1) * 16;
+            List<byte> lifemBinary = new List<byte>();
+            uint count = (uint)_codes.Count * 16U;
 
-            foreach (var label in this.labels)
+            // lifemのラベル処理，バイナリ化
+            foreach (var lifemValue in _lifemValues)
             {
-                label.RelativeAddress += (uint)(labelLifemCount * 16);
-            }
-            
-            foreach (var lifem in this.lifemList)
-            {
-                if (lifem.SetType == Mnemonic.KRZ && (count & 0x3) != 0)
+                byte[] binary = ToBinary(lifemValue.Value);
+
+                if (lifemValue.Size == ValueSize.DWORD && (count & 0x3) != 0)
                 {
-                    count += 4 - (count & 0x3);
+                    uint offset = 4 - (count & 0x3);
+
+                    for (uint i = 0; i < offset; i++)
+                    {
+                        lifemBinary.Add(0);
+                    }
+
+                    count += offset;
                 }
-                else if (lifem.SetType == Mnemonic.KRZ16C && (count & 0x1) != 0)
+                else if (lifemValue.Size == ValueSize.WORD && (count & 0x1) != 0)
                 {
+                    lifemBinary.Add(0);
                     count += 1;
                 }
 
-                if (lifem.Labels != null)
+                if (lifemValue.Labels.Any())
                 {
-                    foreach(var label in lifem.Labels)
+                    foreach (var label in lifemValue.Labels)
                     {
-                        label.RelativeAddress = (uint)count - 16;
-                        this.labels.Add(label);
+                        label.RelativeAddress = count;
+                        _labels.Add(label);
                     }
                 }
+
+                switch (lifemValue.Size)
+                {
+                    case ValueSize.BYTE:
+                        lifemBinary.Add(binary[3]);
+                        count += 1;
+                        break;
+                    case ValueSize.WORD:
+                        lifemBinary.Add(binary[2]);
+                        lifemBinary.Add(binary[3]);
+                        count += 2;
+                        break;
+                    case ValueSize.DWORD:
+                        lifemBinary.AddRange(binary);
+                        count += 4;
+                        break;
+                    default:
+                        throw new ApplicationException($"Invalid value: {lifemValue.Size}");
+                }
+            }
+
+            // コードのバイナリ化
+            count = 16U;
+            foreach (var code in _codes)
+            {
+                ModRm modrm = code.Modrm;
+                uint value;
                 
-                switch (lifem.SetType)
-                {
-                    case Mnemonic.KRZ8C:
-                        count += 1;
-                        break;
-                    case Mnemonic.KRZ16C:
-                        count += 2;
-                        break;
-                    case Mnemonic.KRZ:
-                        count += 4;
-                        break;
-                    default:
-                        throw new ApplicationException($"Unknown Exception: {lifem.SetType}");
-                }
-            }
-
-            count = (this.codeList.Count + labelLifemCount + 1) * 16;
-            int codeCount = 0;
-            foreach (var lifem in this.lifemList)
-            {
-                if (lifem.SetType == Mnemonic.KRZ && (count & 0x3) != 0)
-                {
-                    count += 4 - (count & 0x3);
-                }
-                else if (lifem.SetType == Mnemonic.KRZ16C && (count & 0x1) != 0)
-                {
-                    count += 1;
-                }
-
-                if (lifem.SourceLabel != null)
-                {
-                    uint position = this.labels.Where(x => x == lifem.SourceLabel).Single().RelativeAddress;
-                    Code code = new Code
-                    {
-                        Mnemonic = lifem.SetType,
-                        Head = XX + (uint)(position + (labelLifemCount - codeCount - 1) * 16),
-                        Tail = Seti(XX + (uint)(count - (codeCount + 2) * 16)),
-                    };
-
-                    code.Modrm = CreateModRm(code.Head, code.Tail);
-
-                    codeList.Insert(codeCount, code);
-
-                    codeCount++;
-                }
-
-                switch (lifem.SetType)
-                {
-                    case Mnemonic.KRZ8C:
-                        count += 1;
-                        break;
-                    case Mnemonic.KRZ16C:
-                        count += 2;
-                        break;
-                    case Mnemonic.KRZ:
-                        count += 4;
-                        break;
-                    default:
-                        break;
-                }
-            }
-
-            count = 1 * 16;
-            foreach (var code in this.codeList)
-            {
                 binaryCode.AddRange(ToBinary((uint)code.Mnemonic));
-                binaryCode.AddRange(ToBinary(code.Modrm.Value));
-
-                uint value = 0;
-                switch (code.Modrm.ModeHead)
+                
+                if (code.Head.HasLabel)
                 {
-                    case OperandMode.IMM32:
-                    case OperandMode.ADDR_IMM32:
-                    case OperandMode.REG32_IMM32:
-                    case OperandMode.ADDR_REG32_IMM32:
-                        value = code.Head.Immidiate;
-                        break;
-                    case OperandMode.XX_IMM32:
-                    case OperandMode.XX_REG32_IMM32:
-                    case OperandMode.ADDR_XX_IMM32:
-                    case OperandMode.ADDR_XX_REG32_IMM32:
-                        value = (uint)(code.Head.Immidiate - count);
-                        break;
-                    case OperandMode.REG32_REG32:
-                    case OperandMode.ADDR_REG32_REG32:
-                        value = (uint)code.Head.Second;
-                        break;
-                    default:
-                        break;
+                    switch (modrm.HeadMode)
+                    {
+                        case OperandMode.REG:
+                            modrm.HeadMode = OperandMode.IMM_REG;
+                            break;
+                        case OperandMode.ADDR_REG:
+                            modrm.HeadMode = OperandMode.ADDR_IMM_REG;
+                            break;
+                        default:
+                            break;
+                    }
                 }
+
+                if (code.Tail.HasLabel)
+                {
+                    switch (modrm.TailMode)
+                    {
+                        case OperandMode.REG:
+                            modrm.TailMode = OperandMode.IMM_REG;
+                            break;
+                        case OperandMode.ADDR_REG:
+                            modrm.TailMode = OperandMode.ADDR_IMM_REG;
+                            break;
+                        default:
+                            break;
+                    }
+                }
+
+                binaryCode.AddRange(ToBinary(code.Modrm.Value));
+                
+                if ((modrm.HeadMode & (~OperandMode.ADDRESS)) == OperandMode.REG)
+                {
+                    value = 0U;
+                }
+                else
+                {
+                    value = code.Head.Immidiate;
+
+                    RegisterValue? register = code.Head.First;
+                    if (!(register is null) && register.RelativeAddress != 0)
+                    {
+                        value -= count;
+                    }
+
+                    register = code.Head.Second;
+                    if (!(register is null) && register.RelativeAddress != 0)
+                    {
+                        value -= count;
+                    }
+                }
+
                 binaryCode.AddRange(ToBinary(value));
 
-                value = 0;
-                switch (code.Modrm.ModeTail)
+                if ((modrm.TailMode & (~OperandMode.ADDRESS)) == OperandMode.REG)
                 {
-                    case OperandMode.IMM32:
-                    case OperandMode.ADDR_IMM32:
-                    case OperandMode.REG32_IMM32:
-                    case OperandMode.ADDR_REG32_IMM32:
-                        value = code.Tail.Immidiate;
-                        break;
-                    case OperandMode.XX_IMM32:
-                    case OperandMode.XX_REG32_IMM32:
-                    case OperandMode.ADDR_XX_IMM32:
-                    case OperandMode.ADDR_XX_REG32_IMM32:
-                        value = (uint)(code.Tail.Immidiate - count);
-                        break;
-                    case OperandMode.REG32_REG32:
-                    case OperandMode.ADDR_REG32_REG32:
-                        value = (uint)code.Tail.Second;
-                        break;
-                    default:
-                        break;
+                    value = 0;
+                }
+                else
+                {
+                    value = code.Tail.Immidiate;
+
+                    RegisterValue? register = code.Tail.First;
+                    if (!(register is null) && register.RelativeAddress != 0)
+                    {
+                        value -= count;
+                    }
+
+                    register = code.Tail.Second;
+                    if (!(register is null) && register.RelativeAddress != 0)
+                    {
+                        value -= count;
+                    }
                 }
                 binaryCode.AddRange(ToBinary(value));
 
                 count += 16;
             }
 
-            count = 0;
-            foreach (var lifem in this.lifemList)
+            binaryCode.AddRange(lifemBinary);
+
+            int length = binaryCode.Count & 0xF;
+            for (int i = 16 - length; i > 0; i--)
             {
-                var binary = ToBinary(lifem.Value);
-
-                if (lifem.SetType == Mnemonic.KRZ && (count & 0x3) != 0)
-                {
-                    int offset = 4 - (count & 0x3);
-                    for(int i = 0; i < offset; i++)
-                    {
-                        binaryCode.Add(0);
-                    }
-                    count += offset;
-                }
-                else if (lifem.SetType == Mnemonic.KRZ16C && (count & 0x1) != 0)
-                {
-                    binaryCode.Add(0);
-                    count += 1;
-                }
-
-                switch (lifem.SetType)
-                {
-                    case Mnemonic.KRZ8C:
-                        binaryCode.Add(binary[3]);
-                        count += 1;
-                        break;
-                    case Mnemonic.KRZ16C:
-                        binaryCode.Add(binary[2]);
-                        binaryCode.Add(binary[3]);
-                        count += 2;
-                        break;
-                    case Mnemonic.KRZ:
-                        binaryCode.AddRange(binary);
-                        count += 4;
-                        break;
-                    default:
-                        throw new ApplicationException($"Unknown Exception: {lifem.SetType}");
-                }
-            }
-
-            if((count & 0x3) != 0)
-            {
-                int offset = 4 - (count & 0x3);
-                for (int i = 0; i < offset; i++)
-                {
-                    binaryCode.Add(0);
-                }
-                count += offset;
+                binaryCode.Add(0);
             }
 
             return new ReadOnlyCollection<byte>(binaryCode);
 
-            byte[] ToBinary(uint value)
+            static byte[] ToBinary(uint value)
             {
                 var buffer = new byte[4];
 
@@ -299,7 +245,7 @@ namespace UbplCommon.Translator
         {
             ModRm modrm = CreateModRm(head, tail);
 
-            this.codeList.Add(new Code
+            _codes.Add(new Code
             {
                 Mnemonic = mne,
                 Modrm = modrm,
@@ -310,54 +256,36 @@ namespace UbplCommon.Translator
 
         private bool IsInvalidOperand(Operand opd)
         {
-            return !opd.IsAddress && (opd.Second.HasValue || opd.Immidiate != 0|| opd.HasLabel);
+            return !opd.IsAddressing && (opd.Second != null || opd.Immidiate != 0 || opd.HasLabel);
         }
 
         private ModRm CreateModRm(Operand head, Operand tail)
         {
-            ModRm modrm = new ModRm();
-            (modrm.ModeHead, modrm.RegHead) = GetValue(head);
-            (modrm.ModeTail, modrm.RegTail) = GetValue(tail);
+            ModRm modrm = new ModRm
+            {
+                Value = ((uint)head.ValueType << 24)
+                | ((uint)(head.FirstRegister ?? Register.F0) << 20)
+                | ((uint)(head.SecondRegister ?? Register.F0) << 16)
+                | ((uint)tail.ValueType << 8)
+                | ((uint)(tail.FirstRegister ?? Register.F0) << 4)
+                | (uint)(tail.SecondRegister ?? Register.F0)
+            };
 
             return modrm;
-
-            (OperandMode, Register) GetValue(Operand value)
-            {
-                OperandMode mode = value.ValueType;
-                Register register;
-
-                if ((mode & OperandMode.XX_REG32) != 0)
-                {
-                    if(value.First == Register.XX)
-                    {
-                        register = value.Second ?? Register.F0;
-                    }
-                    else
-                    {
-                        register = value.First.Value;
-                    }
-                }
-                else
-                {
-                    register = value.First ?? Register.F0;
-                }
-                
-                return (mode, register);
-            }
         }
 
         #endregion
 
         #region Operation
-        
+
         /// <summary>
         /// 前置ラベルを定義します．
         /// </summary>
         /// <param name="label">ラベル</param>
         protected void Nll(JumpLabel label)
         {
-            label.RelativeAddress = (uint)(this.codeList.Count * 16);
-            this.labels.Add(label);
+            label.RelativeAddress = (uint)(_codes.Count * 16);
+            _labels.Add(label);
         }
 
         /// <summary>
@@ -368,21 +296,8 @@ namespace UbplCommon.Translator
         {
             Lifem(new LifemValue
             {
-                SetType = Mnemonic.KRZ,
+                Size = ValueSize.DWORD,
                 Value = value,
-            });
-        }
-
-        /// <summary>
-        /// ラベル先のアドレスを定数として定義します．
-        /// </summary>
-        /// <param name="value"></param>
-        protected void Lifem(JumpLabel label)
-        {
-            Lifem(new LifemValue
-            {
-                SetType = Mnemonic.KRZ,
-                SourceLabel = label,
             });
         }
 
@@ -394,21 +309,8 @@ namespace UbplCommon.Translator
         {
             Lifem(new LifemValue
             {
-                SetType = Mnemonic.KRZ8C,
+                Size = ValueSize.BYTE,
                 Value = value,
-            });
-        }
-
-        /// <summary>
-        /// ラベル先のアドレスを定数として定義します．
-        /// </summary>
-        /// <param name="label"></param>
-        protected void Lifem8(JumpLabel label)
-        {
-            Lifem(new LifemValue
-            {
-                SetType = Mnemonic.KRZ8C,
-                SourceLabel = label,
             });
         }
 
@@ -420,42 +322,172 @@ namespace UbplCommon.Translator
         {
             Lifem(new LifemValue
             {
-                SetType = Mnemonic.KRZ16C,
+                Size = ValueSize.WORD,
                 Value = value,
-            }); ;
-        }
-
-        /// <summary>
-        /// ラベル先のアドレスを定数として定義します．
-        /// </summary>
-        /// <param name="label"></param>
-        protected void Lifem16(JumpLabel label)
-        {
-            Lifem(new LifemValue
-            {
-                SetType = Mnemonic.KRZ16C,
-                SourceLabel = label,
             });
         }
 
-        /// <summary>
-        /// 指定された値を定数として定義します．
-        /// </summary>
-        /// <param name="value"></param>
-        private void Lifem(LifemValue lifem)
+        private void Lifem(LifemValue lifemValue)
         {
-            var labels = this.labels.Where(x => x.RelativeAddress == this.codeList.Count * 16).ToList();
-
-            if (labels.Any())
+            var relativeAddress = _codes.Count * 16;
+            if (relativeAddress >= 0)
             {
-                foreach (var label in labels)
-                {
-                    lifem.Labels.Add(label);
-                    this.labels.Remove(label);
-                }
-            }
+                var labels = _labels.Where(x => x.RelativeAddress == relativeAddress).ToList();
 
-            this.lifemList.Add(lifem);
+                if (labels.Any())
+                {
+                    foreach (var label in labels)
+                    {
+                        lifemValue.Labels.Add(label);
+                        _labels.Remove(label);
+                    }
+                }
+            } 
+
+            _lifemValues.Add(lifemValue);
+        }
+
+        /// <summary>
+        /// krzを表すメソッドです．
+        /// </summary>
+        /// <param name="val">即値</param>
+        /// <param name="opd">オペランド</param>
+        protected void Krz(uint val, Operand opd)
+        {
+            Krz(new Operand(val), opd);
+        }
+
+        /// <summary>
+        /// krzを表すメソッドです．
+        /// </summary>
+        /// <param name="opd1">オペランド</param>
+        /// <param name="opd2">オペランド</param>
+        protected void Krz(Operand opd1, Operand opd2)
+        {
+            if (IsInvalidOperand(opd2))
+            {
+                throw new ArgumentException($"Invalid Operand: {opd2} count:{_codes.Count}");
+            }
+            Append(Mnemonic.KRZ, opd1, opd2);
+        }
+
+        /// <summary>
+        /// malkrzを表すメソッドです．
+        /// </summary>
+        /// <param name="val">即値</param>
+        /// <param name="opd">オペランド</param>
+        protected void Malkrz(uint val, Operand opd)
+        {
+            Malkrz(new Operand(val), opd);
+        }
+
+        /// <summary>
+        /// malkrzを表すメソッドです．
+        /// </summary>
+        /// <param name="opd1">オペランド</param>
+        /// <param name="opd2">オペランド</param>
+        protected void Malkrz(Operand opd1, Operand opd2)
+        {
+            if (IsInvalidOperand(opd2))
+            {
+                throw new ArgumentException($"Invalid Operand: {opd2} count:{_codes.Count}");
+            }
+            Append(Mnemonic.MALKRZ, opd1, opd2);
+        }
+
+        /// <summary>
+        /// krz8iを表すメソッドです．
+        /// </summary>
+        /// <param name="val">即値</param>
+        /// <param name="opd">オペランド</param>
+        protected void Krz8i(uint val, Operand opd)
+        {
+            Krz8i(new Operand(val), opd);
+        }
+
+        /// <summary>
+        /// krz8iを表すメソッドです．
+        /// </summary>
+        /// <param name="opd1">オペランド</param>
+        /// <param name="opd2">オペランド</param>
+        protected void Krz8i(Operand opd1, Operand opd2)
+        {
+            if (IsInvalidOperand(opd2))
+            {
+                throw new ArgumentException($"Invalid Operand: {opd2} count:{_codes.Count}");
+            }
+            Append(Mnemonic.KRZ8I, opd1, opd2);
+        }
+
+        /// <summary>
+        /// krz16iを表すメソッドです．
+        /// </summary>
+        /// <param name="val">即値</param>
+        /// <param name="opd">オペランド</param>
+        protected void Krz16i(uint val, Operand opd)
+        {
+            Krz16i(new Operand(val), opd);
+        }
+
+        /// <summary>
+        /// krz16iを表すメソッドです．
+        /// </summary>
+        /// <param name="opd1">オペランド</param>
+        /// <param name="opd2">オペランド</param>
+        protected void Krz16i(Operand opd1, Operand opd2)
+        {
+            if (IsInvalidOperand(opd2))
+            {
+                throw new ArgumentException($"Invalid Operand: {opd2} count:{_codes.Count}");
+            }
+            Append(Mnemonic.KRZ16I, opd1, opd2);
+        }
+        /// <summary>
+        /// krz8cを表すメソッドです．
+        /// </summary>
+        /// <param name="val">即値</param>
+        /// <param name="opd">オペランド</param>
+        protected void Krz8c(uint val, Operand opd)
+        {
+            Krz8c(new Operand(val), opd);
+        }
+
+        /// <summary>
+        /// krz8cを表すメソッドです．
+        /// </summary>
+        /// <param name="opd1">オペランド</param>
+        /// <param name="opd2">オペランド</param>
+        protected void Krz8c(Operand opd1, Operand opd2)
+        {
+            if (IsInvalidOperand(opd2))
+            {
+                throw new ArgumentException($"Invalid Operand: {opd2} count:{_codes.Count}");
+            }
+            Append(Mnemonic.KRZ8C, opd1, opd2);
+        }
+
+        /// <summary>
+        /// krz16cを表すメソッドです．
+        /// </summary>
+        /// <param name="val">即値</param>
+        /// <param name="opd">オペランド</param>
+        protected void Krz16c(uint val, Operand opd)
+        {
+            Krz16c(new Operand(val), opd);
+        }
+
+        /// <summary>
+        /// krz16cを表すメソッドです．
+        /// </summary>
+        /// <param name="opd1">オペランド</param>
+        /// <param name="opd2">オペランド</param>
+        protected void Krz16c(Operand opd1, Operand opd2)
+        {
+            if (IsInvalidOperand(opd2))
+            {
+                throw new ArgumentException($"Invalid Operand: {opd2} count:{_codes.Count}");
+            }
+            Append(Mnemonic.KRZ16C, opd1, opd2);
         }
 
         /// <summary>
@@ -475,9 +507,9 @@ namespace UbplCommon.Translator
         /// <param name="opd2">オペランド</param>
         protected void Ata(Operand opd1, Operand opd2)
         {
-            if(IsInvalidOperand(opd2))
+            if (IsInvalidOperand(opd2))
             {
-                throw new ArgumentException($"Invalid Operand: {opd2} count:{this.codeList.Count}");
+                throw new ArgumentException($"Invalid Operand: {opd2}, count:{_codes.Count}");
             }
             Append(Mnemonic.ATA, opd1, opd2);
         }
@@ -501,7 +533,7 @@ namespace UbplCommon.Translator
         {
             if (IsInvalidOperand(opd2))
             {
-                throw new ArgumentException($"Invalid Operand: {opd2} count:{this.codeList.Count}");
+                throw new ArgumentException($"Invalid Operand: {opd2} count:{_codes.Count}");
             }
             Append(Mnemonic.NTA, opd1, opd2);
         }
@@ -525,7 +557,7 @@ namespace UbplCommon.Translator
         {
             if (IsInvalidOperand(opd2))
             {
-                throw new ArgumentException($"Invalid Operand: {opd2} count:{this.codeList.Count}");
+                throw new ArgumentException($"Invalid Operand: {opd2} count:{_codes.Count}");
             }
             Append(Mnemonic.ADA, opd1, opd2);
         }
@@ -549,7 +581,7 @@ namespace UbplCommon.Translator
         {
             if (IsInvalidOperand(opd2))
             {
-                throw new ArgumentException($"Invalid Operand: {opd2} count:{this.codeList.Count}");
+                throw new ArgumentException($"Invalid Operand: {opd2} count:{_codes.Count}");
             }
             Append(Mnemonic.EKC, opd1, opd2);
         }
@@ -573,7 +605,7 @@ namespace UbplCommon.Translator
         {
             if (IsInvalidOperand(opd2))
             {
-                throw new ArgumentException($"Invalid Operand: {opd2} count:{this.codeList.Count}");
+                throw new ArgumentException($"Invalid Operand: {opd2} count:{_codes.Count}");
             }
             Append(Mnemonic.DTO, opd1, opd2);
         }
@@ -597,7 +629,7 @@ namespace UbplCommon.Translator
         {
             if (IsInvalidOperand(opd2))
             {
-                throw new ArgumentException($"Invalid Operand: {opd2} count:{this.codeList.Count}");
+                throw new ArgumentException($"Invalid Operand: {opd2} count:{_codes.Count}");
             }
             Append(Mnemonic.DRO, opd1, opd2);
         }
@@ -621,7 +653,7 @@ namespace UbplCommon.Translator
         {
             if (IsInvalidOperand(opd2))
             {
-                throw new ArgumentException($"Invalid Operand: {opd2} count:{this.codeList.Count}");
+                throw new ArgumentException($"Invalid Operand: {opd2} count:{_codes.Count}");
             }
             Append(Mnemonic.DTOSNA, opd1, opd2);
         }
@@ -645,161 +677,11 @@ namespace UbplCommon.Translator
         {
             if (IsInvalidOperand(opd2))
             {
-                throw new ArgumentException($"Invalid Operand: {opd2} count:{this.codeList.Count}");
+                throw new ArgumentException($"Invalid Operand: {opd2} count:{_codes.Count}");
             }
             Append(Mnemonic.DAL, opd1, opd2);
         }
-        
-        /// <summary>
-        /// krzを表すメソッドです．
-        /// </summary>
-        /// <param name="val">即値</param>
-        /// <param name="opd">オペランド</param>
-        protected void Krz(uint val, Operand opd)
-        {
-            Krz(new Operand(val), opd);
-        }
-        
-        /// <summary>
-        /// krzを表すメソッドです．
-        /// </summary>
-        /// <param name="opd1">オペランド</param>
-        /// <param name="opd2">オペランド</param>
-        protected void Krz(Operand opd1, Operand opd2)
-        {
-            if (IsInvalidOperand(opd2))
-            {
-                throw new ArgumentException($"Invalid Operand: {opd2} count:{this.codeList.Count}");
-            }
-            Append(Mnemonic.KRZ, opd1, opd2);
-        }
 
-        /// <summary>
-        /// malkrzを表すメソッドです．
-        /// </summary>
-        /// <param name="val">即値</param>
-        /// <param name="opd">オペランド</param>
-        protected void Malkrz(uint val, Operand opd)
-        {
-            Malkrz(new Operand(val), opd);
-        }
-        
-        /// <summary>
-        /// malkrzを表すメソッドです．
-        /// </summary>
-        /// <param name="opd1">オペランド</param>
-        /// <param name="opd2">オペランド</param>
-        protected void Malkrz(Operand opd1, Operand opd2)
-        {
-            if (IsInvalidOperand(opd2))
-            {
-                throw new ArgumentException($"Invalid Operand: {opd2} count:{this.codeList.Count}");
-            }
-            Append(Mnemonic.MALKRZ, opd1, opd2);
-        }
-
-        /// <summary>
-        /// krz8iを表すメソッドです．
-        /// </summary>
-        /// <param name="val">即値</param>
-        /// <param name="opd">オペランド</param>
-        protected void Krz8i(uint val, Operand opd)
-        {
-            Krz8i(new Operand(val), opd);
-        }
-        
-        /// <summary>
-        /// krz8iを表すメソッドです．
-        /// </summary>
-        /// <param name="opd1">オペランド</param>
-        /// <param name="opd2">オペランド</param>
-        protected void Krz8i(Operand opd1, Operand opd2)
-        {
-            if (IsInvalidOperand(opd2))
-            {
-                throw new ArgumentException($"Invalid Operand: {opd2} count:{this.codeList.Count}");
-            }
-            Append(Mnemonic.KRZ8I, opd1, opd2);
-        }
-
-        /// <summary>
-        /// krz16iを表すメソッドです．
-        /// </summary>
-        /// <param name="val">即値</param>
-        /// <param name="opd">オペランド</param>
-        protected void Krz16i(uint val, Operand opd)
-        {
-            Krz16i(new Operand(val), opd);
-        }
-        
-        /// <summary>
-        /// krz16iを表すメソッドです．
-        /// </summary>
-        /// <param name="opd1">オペランド</param>
-        /// <param name="opd2">オペランド</param>
-        protected void Krz16i(Operand opd1, Operand opd2)
-        {
-            if (IsInvalidOperand(opd2))
-            {
-                throw new ArgumentException($"Invalid Operand: {opd2} count:{this.codeList.Count}");
-            }
-            Append(Mnemonic.KRZ16I, opd1, opd2);
-        }
-        /// <summary>
-        /// krz8cを表すメソッドです．
-        /// </summary>
-        /// <param name="val">即値</param>
-        /// <param name="opd">オペランド</param>
-        protected void Krz8c(uint val, Operand opd)
-        {
-            Krz8c(new Operand(val), opd);
-        }
-        
-        /// <summary>
-        /// krz8cを表すメソッドです．
-        /// </summary>
-        /// <param name="opd1">オペランド</param>
-        /// <param name="opd2">オペランド</param>
-        protected void Krz8c(Operand opd1, Operand opd2)
-        {
-            if (IsInvalidOperand(opd2))
-            {
-                throw new ArgumentException($"Invalid Operand: {opd2} count:{this.codeList.Count}");
-            }
-            Append(Mnemonic.KRZ8C, opd1, opd2);
-        }
-
-        /// <summary>
-        /// krz16cを表すメソッドです．
-        /// </summary>
-        /// <param name="val">即値</param>
-        /// <param name="opd">オペランド</param>
-        protected void Krz16c(uint val, Operand opd)
-        {
-            Krz16c(new Operand(val), opd);
-        }
-        /// <summary>
-        /// krz16cを表すメソッドです．
-        /// </summary>
-        /// <param name="opd1">オペランド</param>
-        /// <param name="opd2">オペランド</param>
-        protected void Krz16c(Operand opd1, Operand opd2)
-        {
-            if (IsInvalidOperand(opd2))
-            {
-                throw new ArgumentException($"Invalid Operand: {opd2} count:{this.codeList.Count}");
-            }
-            Append(Mnemonic.KRZ16C, opd1, opd2);
-        }
-        /// <summary>
-        /// fi系を表すメソッドです．
-        /// </summary>
-        /// <param name="val">即値</param>
-        /// <param name="opd">オペランド</param>
-        protected void Fi(uint val, Operand opd, FiType f)
-        {
-            Fi(new Operand(val), opd, f);
-        }
 
         /// <summary>
         /// fi系を表すメソッドです．
@@ -816,13 +698,24 @@ namespace UbplCommon.Translator
         /// </summary>
         /// <param name="opd1">オペランド</param>
         /// <param name="opd2">オペランド</param>
-        protected void Fi(Operand opd1, Operand opd2, FiType f)
+        /// <param name="type">比較タイプ</param>
+        protected void Fi(Operand opd1, Operand opd2, FiType type)
         {
             Operand head, tail;
             Mnemonic mnemonic;
 
-            switch (f)
+            switch (type)
             {
+                case FiType.CLO:
+                    mnemonic = Mnemonic.CLO;
+                    head = opd1;
+                    tail = opd2;
+                    break;
+                case FiType.NIV:
+                    mnemonic = Mnemonic.NIV;
+                    head = opd1;
+                    tail = opd2;
+                    break;
                 case FiType.XTLO:
                     mnemonic = Mnemonic.XTLO;
                     head = opd1;
@@ -830,11 +723,6 @@ namespace UbplCommon.Translator
                     break;
                 case FiType.XYLO:
                     mnemonic = Mnemonic.XYLO;
-                    head = opd1;
-                    tail = opd2;
-                    break;
-                case FiType.CLO:
-                    mnemonic = Mnemonic.CLO;
                     head = opd1;
                     tail = opd2;
                     break;
@@ -847,11 +735,6 @@ namespace UbplCommon.Translator
                     mnemonic = Mnemonic.XYLO;
                     head = opd2;
                     tail = opd1;
-                    break;
-                case FiType.NIV:
-                    mnemonic = Mnemonic.NIV;
-                    head = opd1;
-                    tail = opd2;
                     break;
                 case FiType.XTLONYS:
                     mnemonic = Mnemonic.XTLONYS;
@@ -874,7 +757,7 @@ namespace UbplCommon.Translator
                     tail = opd1;
                     break;
                 default:
-                    throw new ArgumentException($"Invalid Operation: {f} count:{this.codeList.Count}");
+                    throw new ArgumentException($"Invalid Operation: {type} count:{_codes.Count}");
             }
             Append(mnemonic, head, tail);
         }
@@ -888,7 +771,7 @@ namespace UbplCommon.Translator
         {
             Fnx(new Operand(val), opd);
         }
-        
+
         /// <summary>
         /// fnxを表すメソッドです．
         /// </summary>
@@ -918,7 +801,7 @@ namespace UbplCommon.Translator
         {
             Mte(new Operand(val1), new Operand(val2));
         }
-        
+
         /// <summary>
         /// mteを表すメソッドです．
         /// </summary>
@@ -928,7 +811,7 @@ namespace UbplCommon.Translator
         {
             Mte(opd, new Operand(val));
         }
-        
+
         /// <summary>
         /// mteを表すメソッドです．
         /// </summary>
@@ -948,12 +831,12 @@ namespace UbplCommon.Translator
         {
             if (IsInvalidOperand(opd1))
             {
-                throw new ArgumentException($"Invalid Operand: {opd1} count:{this.codeList.Count}");
+                throw new ArgumentException($"Invalid Operand: {opd1} count:{_codes.Count}");
             }
 
             if (IsInvalidOperand(opd2))
             {
-                throw new ArgumentException($"Invalid Operand: {opd2} count:{this.codeList.Count}");
+                throw new ArgumentException($"Invalid Operand: {opd2} count:{_codes.Count}");
             }
             Append(Mnemonic.ANF, opd1, opd2);
         }
@@ -1078,16 +961,26 @@ namespace UbplCommon.Translator
             Append(Mnemonic.KAKSNA, opd1, opd2);
         }
 
+        /// <summary>
+        /// klonを表すメソッドです．
+        /// </summary>
+        /// <param name="val">即値</param>
+        /// <param name="opd">オペランド</param>
         protected void Klon(uint val, Operand opd)
         {
             Klon(new Operand(val), opd);
         }
 
+        /// <summary>
+        /// klonを表すメソッドです．
+        /// </summary>
+        /// <param name="opd1">オペランド</param>
+        /// <param name="opd2">オペランド</param>
         protected void Klon(Operand opd1, Operand opd2)
         {
             Append(Mnemonic.KLON, opd1, opd2);
         }
-    }
 
-    #endregion
+        #endregion
+    }
 }

@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace UbplCommon
 {
@@ -17,64 +15,62 @@ namespace UbplCommon
 
         /// <summary>
         /// Head(16bit)とTail(16bit)のmodrmを持つ
-        /// それぞれ，Mode(8bit)，Type(4bit)，Reg(4bit)となっている
+        /// それぞれ，Mode(8bit)，Reg(4bit)，Reg(4bit)となっている
         /// </summary>
-        public uint Value
+        public uint Value { get; set; }
+
+        public OperandMode HeadMode
         {
-            get;
-            set;
+            get => (OperandMode)((Value >> 24) & 0xFFU);
+            set => Value = (Value & 0x00FFFFFFU) | ((uint)value << 24);
         }
 
-        public OperandMode ModeHead
+        public Register HeadReg1
         {
-            get => (OperandMode)((this.Value >> 24) & 0xFFU);
-            set => this.Value = this.Value & 0x00FFFFFFU | (((uint)value & 0xFFU) << 24);
+            get => (Register)((Value >> 20) & 0xFU);
+            set => Value = (Value & 0xFF0FFFFFU) | ((uint)value << 20);
         }
 
-        public OperandType TypeHead
+        public Register HeadReg2
         {
-            get => (OperandType)((this.Value >> 20) & 0xFU);
-            set => this.Value = this.Value & 0xFF0FFFFFU | (((uint)value & 0xFU) << 20);
-        }
-
-        public Register RegHead
-        {
-            get => (Register)((this.Value >> 16) & 0xFU);
-            set => this.Value = this.Value & 0xFFF0FFFFU | (((uint)value & 0xFU) << 16);
+            get => (Register)((Value >> 16) & 0xFU);
+            set => Value = (Value & 0xFFF0FFFFU) | ((uint)value << 16);
         }
 
         public bool IsAddressHead
         {
-            get => (this.Value & ((uint)OperandMode.ADDRESS << 24)) != 0;
+            get => (Value & ((uint)OperandMode.ADDRESS << 24)) != 0U;
+            set => Value = (Value & 0xEFFFFFFFU) | (value ? (uint)OperandMode.ADDRESS << 24 : 0U);
         }
 
-        public OperandMode ModeTail
+        public OperandMode TailMode
         {
-            get => (OperandMode)((this.Value >> 8) & 0xFF);
-            set => this.Value = this.Value & 0xFFFF00FFU | (((uint)value & 0xFFU) << 8);
+            get => (OperandMode)((Value >> 8) & 0xFFU);
+            set => Value = (Value & 0xFFFF00FFU) | ((uint)value << 8);
         }
 
-        public OperandType TypeTail
+        public Register TailReg1
         {
-            get => (OperandType)((this.Value >> 4) & 0xF);
-            set => this.Value = this.Value & 0xFFFFFF0FU | (((uint)value & 0xFU) << 4);
+            get => (Register)((Value >> 4) & 0xFU);
+            set => Value = (Value & 0xFFFFFF0FU) | ((uint)value << 4);
         }
 
-        public Register RegTail
+        public Register TailReg2
         {
-            get => (Register)(this.Value & 0xFU);
-            set => this.Value = this.Value & 0xFFFFFFF0U | ((uint)value & 0xFU);
+            get => (Register)(Value & 0xFU);
+            set => Value = (Value & 0xFFFFFFF0U) | ((uint)value);
         }
 
         public bool IsAddressTail
         {
-            get => (this.Value & ((uint)OperandMode.ADDRESS << 8)) != 0;
+            get => (Value & ((uint)OperandMode.ADDRESS << 8)) != 0U;
+            set => Value = (Value & 0xFFFFEFFFU) | (value ? (uint)OperandMode.ADDRESS << 8 : 0U);
         }
 
         public override string ToString()
         {
-            return $"{{ Head = {{ Mode = {ModeHead}, Type = {TypeHead}, Reg = {RegHead}, IsAddress = {IsAddressHead} }}," +
-                $" Tail = {{ Mode = {ModeTail}, Type = {TypeTail}, Reg = {RegTail}, IsAddress = {IsAddressTail} }} }}";
+            return $"ModRm(HeadMode: {HeadMode}, HeadReg1: {HeadReg1}, HeadReg2: {HeadReg2}, IsAddressHead: {IsAddressHead}, "
+                + $"TailMode: {TailMode}, TailReg1: {TailReg1}, TailReg2: {TailReg2}, IsAddressTail: {IsAddressTail})";
         }
     }
 }

@@ -1,12 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace UbplCommon
 {
-    public static class UbplConstant
+    public class UbplConstants
     {
         /// <summary>
         /// レジスタ数

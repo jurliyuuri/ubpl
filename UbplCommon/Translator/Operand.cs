@@ -2,151 +2,153 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace UbplCommon.Translator
 {
     public class Operand
     {
-        protected Register?[] registers;
-        protected LabelAddress[] labelAddresses;
-        protected uint immidiate;
-        
-        private Operand(Register?[] registers, LabelAddress[] labelAddresses, uint immidiate, bool isAddress)
+        private readonly IReadOnlyList<RegisterValue> _registers;
+        private readonly uint _immidiate;
+        private readonly bool _isAddressing;
+
+        Operand(IReadOnlyList<RegisterValue> registers, uint immidiate, bool isAddressing)
         {
-            this.registers = registers ?? new Register?[2];
-            this.labelAddresses = labelAddresses ?? new LabelAddress[2];
-            this.immidiate = immidiate;
-            this.IsAddress = isAddress;
+            _registers = registers;
+            _immidiate = immidiate;
+            _isAddressing = isAddressing;
         }
 
-        internal Operand(uint immidiate, bool isAddress = false)
-            : this(null, null, immidiate, isAddress) { }
-        
-        internal Operand(Register reg0, LabelAddress label0, uint immidiate, bool isAddress = false)
-            : this(new Register?[] { reg0, null }, new LabelAddress[] { label0, null }, immidiate, isAddress) { }
-        
-        internal Operand(Register reg0, LabelAddress label0, Register reg1, LabelAddress label1 , bool isAddress = false)
-            : this(new Register?[] { reg0, reg1 }, new LabelAddress[] { label0, label1 }, 0, isAddress) { }
-        
-        public Register? First
+        internal Operand(uint immidiate, bool isAddressing = false)
+            : this(new List<RegisterValue>(), immidiate, isAddressing) { }
+
+        internal Operand(RegisterValue first, uint immidiate, bool isAddressing = false)
+            : this(new List<RegisterValue> {
+                new RegisterValue(first.Register, first.RelativeAddress, first.IsMinus),
+            }, immidiate, isAddressing) { }
+
+        internal Operand(RegisterValue first, RegisterValue second, uint immidiate, bool isAddressing = false)
+            : this(new List<RegisterValue> {
+                new RegisterValue(first.Register, first.RelativeAddress, first.IsMinus),
+                new RegisterValue(second.Register, second.RelativeAddress, second.IsMinus),
+            }, immidiate, isAddressing) { }
+
+        internal RegisterValue? First
         {
             get
             {
-                if(this.registers[0].HasValue)
-                {
-                    return this.registers[0];
-                }
-                else
-                {
-                    return null;
-                }
+                if (_registers.Count > 0) { return _registers[0]; }
+                else { return null; }
             }
         }
 
-        public Register? Second
+        internal RegisterValue? Second
         {
             get
             {
-                if (this.registers[1].HasValue)
-                {
-                    return this.registers[1];
-                }
-                else
-                {
-                    return null;
-                }
+                if (_registers.Count > 1) { return _registers[1]; }
+                else { return null; }
+            }
+        }
+
+        public Register? FirstRegister
+        {
+            get
+            {
+                if (_registers.Count > 0) { return _registers[0].Register; }
+                else { return null; }
+            }
+        }
+
+        public Register? SecondRegister
+        {
+            get
+            {
+                if (_registers.Count > 1) { return _registers[1].Register; }
+                else { return null; }
             }
         }
 
         public uint Immidiate
         {
-            get
-            {
-                return this.immidiate + this.labelAddresses.Where(x => x != null).Aggregate(0U, (acc, x) => acc + x.Value);
-            }
+            get => _immidiate + _registers.Select(x => x.IsMinus ? (~x.RelativeAddress.Value + 1) : x.RelativeAddress.Value)
+                .Aggregate(0U, (acc, x) => acc + x);
         }
 
-        public bool IsAddress { get; }
+        public bool IsAddressing
+        {
+            get => _isAddressing;
+        }
+
         public bool HasLabel
         {
-            get => this.labelAddresses.Any(x => x != null);
+            get => _registers.Any(x => x.RelativeAddress != 0);
         }
 
-        public bool IsFirstLabel
+        public bool IsLabelFirst
         {
-            get => this.labelAddresses[0] != null;
+            get => _registers.Count > 0 && _registers[0].RelativeAddress != 0;
         }
 
-        public bool IsSecondLabel
+        public bool IsLabelSecond
         {
-            get => this.labelAddresses[1] != null;
-        }
-
-        public Operand ToAddressing()
-        {
-            return new Operand(this.registers, this.labelAddresses, this.immidiate, true);
+            get => _registers.Count > 1 && _registers[1].RelativeAddress != 0;
         }
 
         public OperandMode ValueType
         {
             get
             {
-                var mode = OperandMode.REG32;
-                
-                bool register0 = this.registers[0] == Register.XX;
-                bool register1 = this.registers[1] == Register.XX;
+                OperandMode mode;
 
-                bool has0 = this.registers[0].HasValue;
-                bool has1 = this.registers[1].HasValue;
-
-                if (register0)
+                switch (_registers.Count)
                 {
-                    if (has1)
-                    {
-                        mode |= OperandMode.XX_REG32_IMM32;
-                    }
-                    else if (this.labelAddresses[0] != null)
-                    {
-                        mode |= OperandMode.XX_IMM32;
-                    }
-                    else if (this.immidiate != 0)
-                    {
-                        mode |= OperandMode.REG32_IMM32;
-                    }
-                }
-                else if (register1)
-                {
-                    if (has0)
-                    {
-                        mode |= OperandMode.XX_REG32_IMM32;
-                    }
-                    else if (this.labelAddresses[1] != null)
-                    {
-                        mode |= OperandMode.XX_IMM32;
-                    }
-                    else if (this.immidiate != 0)
-                    {
-                        mode |= OperandMode.REG32_IMM32;
-                    }
-                }
-                else if (has0 && has1)
-                {
-                    mode |= OperandMode.REG32_REG32;
-                }
-                else if (has0 || has1)
-                {
-                    if (this.immidiate != 0)
-                    {
-                        mode |= OperandMode.REG32_IMM32;
-                    }
-                }
-                else
-                {
-                    mode = OperandMode.IMM32;
+                    case 0:
+                        mode = OperandMode.IMM;
+                        break;
+                    case 1:
+                        if (_immidiate == 0)
+                        {
+                            mode = OperandMode.REG;
+                        }
+                        else if (_registers[0].IsMinus)
+                        {
+                            mode = OperandMode.IMM_NREG;
+                        }
+                        else
+                        {
+                            mode = OperandMode.IMM_REG;
+                        }
+                        break;
+                    case 2:
+                        if (_registers[0].IsMinus)
+                        {
+                            if (_registers[1].IsMinus)
+                            {
+                                mode = OperandMode.IMM_NREG_NREG;
+                            }
+                            else
+                            {
+                                mode = OperandMode.IMM_NREG_REG;
+                            }
+                        }
+                        else
+                        {
+                            if (_registers[1].IsMinus)
+                            {
+                                mode = OperandMode.IMM_REG_NREG;
+                            }
+                            else
+                            {
+                                mode = OperandMode.IMM_REG_REG;
+                            }
+                        }
+                        break;
+                    default:
+                        mode = OperandMode.REG;
+                        break;
                 }
 
-                if(this.IsAddress)
+                if (_isAddressing)
                 {
                     mode |= OperandMode.ADDRESS;
                 }
@@ -155,103 +157,146 @@ namespace UbplCommon.Translator
             }
         }
 
-        public static Operand operator +(Operand left, uint right)
+        public Operand ToAddressing()
         {
-            return left + new Operand(right);
+            return new Operand(_registers.Select(x => new RegisterValue
+            {
+                Register = x.Register,
+                RelativeAddress = x.RelativeAddress,
+                IsMinus = x.IsMinus,
+            }).ToList(), _immidiate, true);
         }
-        
-        public static Operand operator +(uint left, Operand right)
+
+        public override string ToString()
         {
-            return new Operand(left) + right;
+            StringBuilder builder = new StringBuilder();
+
+            if (Immidiate != 0 || !_registers.Any())
+            {
+                builder.Append(Immidiate);
+            }
+
+            foreach (var register in _registers)
+            {
+                if (register.IsMinus)
+                {
+                    builder.Append("|").Append(register.Register);
+                }
+                else {
+                    if (builder.Length != 0)
+                    {
+                        builder.Append("+");
+                    }
+                    builder.Append(register.Register);
+                }
+            }
+
+            if (_isAddressing)
+            {
+                builder.Append("@");
+            }
+
+            return builder.ToString();
         }
-        
+
+        public static Operand operator +(Operand operand)
+        {
+            if (operand.IsAddressing)
+            {
+                throw new ArgumentException($"Not supported : '+(operand@)' ({operand})");
+            }
+
+            return new Operand(operand._registers.Select(x => new RegisterValue(x.Register, x.RelativeAddress, x.IsMinus)).ToList(),
+                operand._immidiate, false);
+        }
+
+        public static Operand operator -(Operand operand)
+        {
+            if (operand.IsAddressing)
+            {
+                throw new ArgumentException($"Not supported : '-(operand@)' ({operand})");
+            }
+
+            return new Operand(operand._registers.Select(x => new RegisterValue(x.Register, x.RelativeAddress, !x.IsMinus)).ToList(), 
+                ~operand._immidiate + 1, false);
+        }
+
         public static Operand operator +(Operand left, Operand right)
         {
-            if(left.IsAddress || right.IsAddress)
+            if (left.IsAddressing || right.IsAddressing)
             {
                 throw new ArgumentException($"Not supported : 'left@ + right@' ({left}+{right})");
             }
 
-            int registerCount = left.registers.Count(x => x.HasValue) + right.registers.Count(x => x.HasValue);
+            int registerCount = left._registers.Count + right._registers.Count;
             if (registerCount > 2)
             {
                 throw new ArgumentException($"Not supported : reg/label's count is more than 2 ({left} + {right})");
             }
 
-            if (registerCount == 2 && (left.labelAddresses.All(x => x == null) && right.labelAddresses.All(x => x == null))
-                && (left.immidiate + right.immidiate != 0))
-            {
-                throw new ArgumentException($"Not supported : 'reg + reg + imm' ({left}+{right})");
-            }
+            List<RegisterValue> registers = new List<RegisterValue>();
+            registers.AddRange(left._registers);
+            registers.AddRange(right._registers);
 
-            (Register? register, LabelAddress labelAddress)[] ps = new (Register? register, LabelAddress labelAddress)[4];
+            uint immidiate = left._immidiate + right._immidiate;
 
-            ps[0] = (left.registers[0], left.labelAddresses[0]);
-            ps[1] = (left.registers[1], left.labelAddresses[1]);
-            ps[2] = (right.registers[0], right.labelAddresses[0]);
-            ps[3] = (right.registers[1], right.labelAddresses[1]);
-
-            Register?[] registers = new Register?[2];
-            LabelAddress[] labelAddresses = new LabelAddress[2];
-            uint immidiate = left.immidiate + right.immidiate;
-
-            for (int i = 0, count = 0; i < ps.Length; i++)
-            {
-                if(ps[i].register.HasValue)
-                {
-                    registers[count] = ps[i].register;
-                    labelAddresses[count] = ps[i].labelAddress;
-                    count++;
-
-                    if(count >= 2)
-                    {
-                        break;
-                    }
-                }
-            }
-
-            return new Operand(registers, labelAddresses, immidiate, false);
+            return new Operand(registers, immidiate, false);
         }
 
-        public override string ToString()
+        public static Operand operator +(Operand left, uint right)
         {
-            List<string> list = new List<string>();
-
-            list.AddRange(this.registers.Where(x => x.HasValue).Select(x => x.ToString()));
-
-            uint immidiate = this.Immidiate;
-            if (immidiate != 0 || !this.registers.Any(x => x.HasValue))
-            {
-                list.Add(immidiate.ToString());
-            }
-
-            if (this.IsAddress)
-            {
-                return string.Join("+", list) + "@";
-            }
-            else
-            {
-                return string.Join("+", list);
-            }
-        }
-    }
-
-    public class JumpLabel : Operand
-    {
-        public JumpLabel() : base(Register.XX, new LabelAddress(), 0U) { }
-
-        public uint RelativeAddress
-        {
-            get => this.labelAddresses[0].Value;
-            set
-            {
-                this.labelAddresses[0].Value = value;
-            }
+            return left + new Operand(right);
         }
 
-        public override string ToString()
+        public static Operand operator +(uint left, Operand right)
         {
-            return $"JumpLabel@{this.GetHashCode()}";
+            return new Operand(left) + right;
+        }
+
+        public static Operand operator -(Operand left, Operand right)
+        {
+            return left + (-right);
+        }
+
+        public static Operand operator -(Operand left, uint right)
+        {
+            return left + new Operand(~right + 1);
+        }
+
+        public static Operand operator -(uint left, Operand right)
+        {
+            return new Operand(left) + (-right);
+        }
+
+        public static readonly Operand F0;
+
+        public static readonly Operand F1;
+        
+        public static readonly Operand F2;
+        
+        public static readonly Operand F3;
+        
+        public static readonly Operand F4;
+        
+        public static readonly Operand F5;
+        
+        public static readonly Operand F6;
+        
+        public static readonly Operand XX;
+
+        public static readonly Operand ZERO;
+
+        static Operand()
+        {
+            F0 = new Operand(new RegisterValue { Register = Register.F0 }, 0);
+            F1 = new Operand(new RegisterValue { Register = Register.F1 }, 0);
+            F2 = new Operand(new RegisterValue { Register = Register.F2 }, 0);
+            F3 = new Operand(new RegisterValue { Register = Register.F3 }, 0);
+            F4 = new Operand(new RegisterValue { Register = Register.F4 }, 0);
+            F5 = new Operand(new RegisterValue { Register = Register.F5 }, 0);
+            F6 = new Operand(new RegisterValue { Register = Register.F6 }, 0);
+            XX = new Operand(new RegisterValue { Register = Register.XX }, 0);
+            ZERO = new Operand(0, false);
         }
     }
 }

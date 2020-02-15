@@ -12,6 +12,36 @@ namespace Ubpl2003lk
     public enum LkMnemonic : uint
     {
         /// <summary>
+        /// コピー
+        /// </summary>
+        KRZ,
+
+        /// <summary>
+        /// フラグが立っているときのみkrzを行う
+        /// </summary>
+        MALKRZ,
+
+        /// <summary>
+        /// 第一オペランドの上位8bitを32bit符号拡張してkrzを行う
+        /// </summary>
+        KRZ8I,
+
+        /// <summary>
+        /// 第一オペランドの上位16bitを32bit符号拡張してkrzを行う
+        /// </summary>
+        KRZ16I,
+
+        /// <summary>
+        /// 第一オペランドの下位8bit取得し，第二オペランドの上位8bitに設定する
+        /// </summary>
+        KRZ8C,
+
+        /// <summary>
+        /// 第一オペランドの下位16bit取得し，第二オペランドの上位16bitに設定する
+        /// </summary>
+        KRZ16C,
+
+        /// <summary>
         /// 加算
         /// </summary>
         ATA,
@@ -50,36 +80,6 @@ namespace Ubpl2003lk
         /// ビットxnor
         /// </summary>
         DAL,
-
-        /// <summary>
-        /// コピー
-        /// </summary>
-        KRZ,
-
-        /// <summary>
-        /// フラグが立っているときのみkrzを行う
-        /// </summary>
-        MALKRZ,
-
-        /// <summary>
-        /// 第一オペランドの上位8bitを32bit符号拡張してkrzを行う
-        /// </summary>
-        KRZ8I,
-
-        /// <summary>
-        /// 第一オペランドの上位16bitを32bit符号拡張してkrzを行う
-        /// </summary>
-        KRZ16I,
-
-        /// <summary>
-        /// 第一オペランドの下位8bit取得し，第二オペランドの上位8bitに設定する
-        /// </summary>
-        KRZ8C,
-
-        /// <summary>
-        /// 第一オペランドの下位16bit取得し，第二オペランドの上位16bitに設定する
-        /// </summary>
-        KRZ16C,
 
         /// <summary>
         /// 超過ならフラグを立てる(符号無し比較)

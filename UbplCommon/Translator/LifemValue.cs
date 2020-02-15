@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
 
 namespace UbplCommon.Translator
 {
@@ -14,8 +10,7 @@ namespace UbplCommon.Translator
         }
 
         public IList<JumpLabel> Labels { get; internal set; }
-        public Mnemonic SetType { get; set; }
+        public ValueSize Size { get; set; }
         public uint Value { get; set; }
-        public JumpLabel SourceLabel { get; set; }
     }
 }

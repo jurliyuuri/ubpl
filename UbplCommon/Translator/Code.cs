@@ -1,14 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
+﻿
 namespace UbplCommon.Translator
 {
-    /// <summary>
-    /// CodeGeneratorの中間表現を保持するためのクラスです．
-    /// </summary>
     class Code
     {
         public Mnemonic Mnemonic { get; set; }
@@ -16,14 +8,17 @@ namespace UbplCommon.Translator
         public Operand Head { get; set; }
         public Operand Tail { get; set; }
 
+        public Code()
+        {
+            Mnemonic = Mnemonic.KRZ;
+            Modrm = new ModRm(0U);
+            Head = Operand.F0;
+            Tail = Operand.F0;
+        }
+
         public override string ToString()
         {
-            return new StringBuilder("Code(")
-                .Append("Mnemonic: ").Append(this.Mnemonic).Append(", ")
-                .Append("Modrm: ").Append(this.Modrm).Append(", ")
-                .Append("Head: ").Append(this.Head).Append(", ")
-                .Append("Tail: ").Append(this.Tail)
-                .Append(")").ToString();
+            return $"Code(Mnemonic: {Mnemonic}, Modrm: {Modrm}, Head: {Head}, Tail: {Tail})";
         }
     }
 }

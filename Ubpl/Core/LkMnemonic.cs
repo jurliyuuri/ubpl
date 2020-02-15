@@ -4,43 +4,13 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Ubpllk.Core
+namespace Ubpl2003lk
 {
     /// <summary>
     /// 命令の種類を表す列挙体です．
     /// </summary>
     public enum LkMnemonic : uint
     {
-        /// <summary>
-        /// コピー
-        /// </summary>
-        KRZ,
-
-        /// <summary>
-        /// フラグが立っているときのみkrzを行う
-        /// </summary>
-        MALKRZ,
-
-        /// <summary>
-        /// 第一オペランドの上位8bitを32bit符号拡張してkrzを行う
-        /// </summary>
-        KRZ8I,
-
-        /// <summary>
-        /// 第一オペランドの上位16bitを32bit符号拡張してkrzを行う
-        /// </summary>
-        KRZ16I,
-
-        /// <summary>
-        /// 第一オペランドの下位8bit取得し，第二オペランドの上位8bitに設定する
-        /// </summary>
-        KRZ8C,
-
-        /// <summary>
-        /// 第一オペランドの下位16bit取得し，第二オペランドの上位16bitに設定する
-        /// </summary>
-        KRZ16C,
-
         /// <summary>
         /// 加算
         /// </summary>
@@ -82,14 +52,34 @@ namespace Ubpllk.Core
         DAL,
 
         /// <summary>
-        /// krz64 head &lt;&lt; 32 | tail tmp と同等
+        /// コピー
         /// </summary>
-        MTE,
+        KRZ,
 
         /// <summary>
-        /// krz ((tmp &gt;&gt; 32) &amp; 0x0000FFFF) head, krz (tmp &amp; 0x0000FFFF) tailと同等
+        /// フラグが立っているときのみkrzを行う
         /// </summary>
-        ANF,
+        MALKRZ,
+
+        /// <summary>
+        /// 第一オペランドの上位8bitを32bit符号拡張してkrzを行う
+        /// </summary>
+        KRZ8I,
+
+        /// <summary>
+        /// 第一オペランドの上位16bitを32bit符号拡張してkrzを行う
+        /// </summary>
+        KRZ16I,
+
+        /// <summary>
+        /// 第一オペランドの下位8bit取得し，第二オペランドの上位8bitに設定する
+        /// </summary>
+        KRZ8C,
+
+        /// <summary>
+        /// 第一オペランドの下位16bit取得し，第二オペランドの上位16bitに設定する
+        /// </summary>
+        KRZ16C,
 
         /// <summary>
         /// 超過ならフラグを立てる(符号無し比較)
@@ -142,10 +132,9 @@ namespace Ubpllk.Core
         XYLO,
 
         /// <summary>
-        /// 関数等呼び出し．
-        /// inj A xx Bと同等
+        /// 二重移動
         /// </summary>
-        FNX,
+        INJ,
 
         /// <summary>
         /// 符号無し乗算
@@ -158,20 +147,10 @@ namespace Ubpllk.Core
         LATSNA,
 
         /// <summary>
-        /// 符号無し除算
-        /// </summary>
-        KAK,
-
-        /// <summary>
-        /// 符号付き除算
-        /// </summary>
-        KAKSNA,
-
-        /// <summary>
         /// 前置ラベル
         /// </summary>
         NLL,
-
+        
         /// <summary>
         /// 定数定義 32bit
         /// </summary>
