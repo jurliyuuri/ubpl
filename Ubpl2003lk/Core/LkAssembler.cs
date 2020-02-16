@@ -300,6 +300,7 @@ namespace Ubpl2003lk.Core
                             {
                                 Mnemonic = LkMnemonic.NLL,
                                 Head = GetLabel(label, fileCount),
+                                Tail = ZERO,
                             });
 
                             if (wordList[i + 1] == "l'")
@@ -319,6 +320,7 @@ namespace Ubpl2003lk.Core
                             {
                                 Mnemonic = LkMnemonic.NLL,
                                 Head = GetLabel(label, fileCount),
+                                Tail = ZERO,
                             });
                             break;
                         case "kue":
@@ -333,19 +335,21 @@ namespace Ubpl2003lk.Core
                         case "lifem16":
                             Operand opd = Convert(wordList[++i], fileCount);
 
-                            if (opd.HasLabel)
+                            if (opd is JumpLabel jumpLabel)
                             {
-                                var jumpLabel = new JumpLabel();
+                                var lifemValueLabel = new JumpLabel();
 
                                 codeList.Add(new LkCode
                                 {
                                     Mnemonic = LkMnemonic.NLL,
-                                    Head = jumpLabel,
+                                    Head = lifemValueLabel,
+                                    Tail = ZERO,
                                 });
                                 codeList.Add(new LkCode
                                 {
                                     Mnemonic = Enum.Parse<LkMnemonic>(str, true),
                                     Head = ZERO,
+                                    Tail = ZERO,
                                 });
                                 _labelLifemList.Add(new LkCode
                                 {
@@ -356,6 +360,7 @@ namespace Ubpl2003lk.Core
                                         _ => LkMnemonic.KRZ,
                                     },
                                     Head = jumpLabel,
+                                    Tail = Seti(lifemValueLabel),
                                 });
                             }
                             else if (!opd.FirstRegister.HasValue && !opd.SecondRegister.HasValue)
@@ -607,12 +612,12 @@ namespace Ubpl2003lk.Core
             {
                 if (code.Head == null)
                 {
-                    throw new ApplicationException("Illegal operand: head is null");
+                    throw new ApplicationException($"Illegal operand: head is null. {code}");
                 }
 
                 if (code.Tail == null)
                 {
-                    throw new ApplicationException("Illegal operand: head is null");
+                    throw new ApplicationException($"Illegal operand: tail is null. {code}");
                 }
 
                 switch (code.Mnemonic)
@@ -693,7 +698,7 @@ namespace Ubpl2003lk.Core
 
                         if (code.Middle == null)
                         {
-                            throw new ApplicationException("Illegal operand: middle is null");
+                            throw new ApplicationException($"Illegal operand: middle is null. {code}");
                         }
 
                         if (!code.Middle.HasLabel && !code.Middle.IsAddressing
@@ -764,7 +769,7 @@ namespace Ubpl2003lk.Core
                     case LkMnemonic.LATSNA:
                         if (code.Middle == null)
                         {
-                            throw new ApplicationException("Illegal operand: middle is null");
+                            throw new ApplicationException($"Illegal operand: middle is null. {code}");
                         }
 
                         Latsna(code.Head, code.Middle);

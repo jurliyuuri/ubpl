@@ -318,12 +318,18 @@ namespace UbplCommon.Processor
                     OutputEmulatorValues();
                 }
 
-                Console.WriteLine("[{0}]", string.Join(",", _debugBuffer));
+                if (_debugBuffer.Any())
+                {
+                    Console.WriteLine("[{0}]", string.Join(",", _debugBuffer));
+                }
             }
             catch (Exception ex)
             {
                 OutputEmulatorValues();
-                Console.WriteLine("[{0}]", string.Join(",", _debugBuffer));
+                if (_debugBuffer.Any())
+                {
+                    Console.WriteLine("[{0}]", string.Join(",", _debugBuffer));
+                }
 
                 throw new Exception("Emulator error", ex);
             }
