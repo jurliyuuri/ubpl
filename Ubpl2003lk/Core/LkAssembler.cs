@@ -98,37 +98,18 @@ namespace Ubpl2003lk.Core
         #region 共通
         private Operand ToRegisterOperand(Register register)
         {
-            Operand operand;
-            switch (register)
+            var operand = register switch
             {
-                case Register.F0:
-                    operand = F0;
-                    break;
-                case Register.F1:
-                    operand = F1;
-                    break;
-                case Register.F2:
-                    operand = F2;
-                    break;
-                case Register.F3:
-                    operand = F3;
-                    break;
-                case Register.F4:
-                    operand = F4;
-                    break;
-                case Register.F5:
-                    operand = F5;
-                    break;
-                case Register.F6:
-                    operand = F6;
-                    break;
-                case Register.XX:
-                    operand = XX;
-                    break;
-                default:
-                    throw new NotSupportedException($"Not Supported register: {register}");
-            }
-
+                Register.F0 => F0,
+                Register.F1 => F1,
+                Register.F2 => F2,
+                Register.F3 => F3,
+                Register.F4 => F4,
+                Register.F5 => F5,
+                Register.F6 => F6,
+                Register.XX => XX,
+                _ => throw new NotSupportedException($"Not Supported register: {register}"),
+            };
             return operand;
         }
 
@@ -363,7 +344,7 @@ namespace Ubpl2003lk.Core
                                 });
                                 codeList.Add(new LkCode
                                 {
-                                    Mnemonic = (LkMnemonic)Enum.Parse(typeof(LkMnemonic), str, true),
+                                    Mnemonic = Enum.Parse<LkMnemonic>(str, true),
                                     Head = ZERO,
                                 });
                                 _labelLifemList.Add(new LkCode
@@ -381,7 +362,7 @@ namespace Ubpl2003lk.Core
                             {
                                 codeList.Add(new LkCode
                                 {
-                                    Mnemonic = (LkMnemonic)Enum.Parse(typeof(LkMnemonic), str, true),
+                                    Mnemonic = Enum.Parse<LkMnemonic>(str, true),
                                     Head = opd,
                                 });
                             }
@@ -416,7 +397,7 @@ namespace Ubpl2003lk.Core
 
                             codeList.Add(new LkCode
                             {
-                                Mnemonic = (LkMnemonic)Enum.Parse(typeof(LkMnemonic), str, true),
+                                Mnemonic = Enum.Parse<LkMnemonic>(str, true),
                                 Head = Convert(head, fileCount),
                                 Tail = Convert(tail, fileCount),
                             });
@@ -438,7 +419,7 @@ namespace Ubpl2003lk.Core
 
                             codeList.Add(new LkCode
                             {
-                                Mnemonic = (LkMnemonic)Enum.Parse(typeof(LkMnemonic), str, true),
+                                Mnemonic = Enum.Parse<LkMnemonic>(str, true),
                                 Head = Convert(head, fileCount),
                                 Middle = Convert(middle, fileCount),
                                 Tail = Convert(tail, fileCount),
@@ -448,22 +429,26 @@ namespace Ubpl2003lk.Core
                             codeList.Add(new LkCode
                             {
                                 Mnemonic = LkMnemonic.DAL,
-                                Head = ToRegisterOperand(0),
+                                Head = ToOperand(0),
                                 Tail = Convert(wordList[++i], fileCount),
                             });
                             break;
                         case "fi":
                             head = wordList[++i];
                             tail = wordList[++i];
-                            bool isCompare = Enum.TryParse(wordList[++i].ToUpper(), out LkMnemonic mne);
-
-                            codeList.Add(new LkCode
+                            if (Enum.TryParse(wordList[++i], true, out LkMnemonic mne))
                             {
-                                Mnemonic = mne,
-                                Head = Convert(head, fileCount),
-                                Tail = Convert(tail, fileCount),
-                            });
-
+                                codeList.Add(new LkCode
+                                {
+                                    Mnemonic = mne,
+                                    Head = Convert(head, fileCount),
+                                    Tail = Convert(tail, fileCount),
+                                });
+                            }
+                            else
+                            {
+                                throw new ApplicationException($"Invalid constant value: {wordList[i]}");
+                            }
                             break;
                         case "inj":
                             if (isCI)
@@ -513,37 +498,24 @@ namespace Ubpl2003lk.Core
             }
             return (h, t, count);
         }
-        
+
         private Operand Convert(string str, int fileCount)
         {
-            bool seti = str.Last() == '@';
             Operand result;
+            bool seti = str.Last() == '@';
+            ReadOnlySpan<char> span = str.AsSpan(0, seti ? str.Length - 1 : str.Length);
+            int nextIndex = span.IndexOf('+');
 
-            if (seti)
+            if (nextIndex != -1)
             {
-                str = str.Remove(str.Length - 1);
-            }
-
-            if (str.IndexOf('+') != -1)
-            {
-                string[] paramArray = str.Split('+');
-                if (paramArray.Length > 2)
-                {
-                    throw new ApplicationException($"Invalid Operand: {str}");
-                }
-
-                result = ToOperand(paramArray[0], fileCount);
-                if (paramArray.Length == 2)
-                {
-                    result += ToOperand(paramArray[1], fileCount);
-                }
+                result = GetOperand(span.Slice(0, nextIndex), fileCount) + GetOperand(span.Slice(nextIndex + 1), fileCount);
             }
             else
             {
-                result = ToOperand(str, fileCount);
+                result = GetOperand(span, fileCount);
             }
 
-            if(seti)
+            if (seti)
             {
                 return Seti(result);
             }
@@ -553,19 +525,56 @@ namespace Ubpl2003lk.Core
             }
         }
 
-        Operand ToOperand(string str, int fileCount)
+        Operand GetOperand(ReadOnlySpan<char> span, int fileCount)
         {
-            if (uint.TryParse(str, out uint val))
+            if (uint.TryParse(span, out uint val))
             {
                 return ToOperand(val);
             }
-            else if (Enum.TryParse(str.ToUpper(), out Register reg))
+            else if (TryGetRegisterOperand(span, out Operand operand))
             {
-                return ToRegisterOperand(reg);
+                return operand;
             }
             else
             {
+                string str = span.ToString();
                 return GetLabel(str, fileCount);
+            }
+        }
+
+        private bool TryGetRegisterOperand(ReadOnlySpan<char> span, out Operand register)
+        {
+            register = null!;
+
+            if (span.Length != 2)
+            {
+                return false;
+            }
+
+            if (span[0] == 'x' && span[1] == 'x')
+            {
+                register = Operand.XX;
+                return true;
+            }
+            else if (span[0] == 'f')
+            {
+                register = span[1] switch
+                {
+                    '0' => Operand.F0,
+                    '1' => Operand.F1,
+                    '2' => Operand.F2,
+                    '3' => Operand.F3,
+                    '4' => Operand.F4,
+                    '5' => Operand.F5,
+                    '6' => Operand.F6,
+                    _ => null!,
+                };
+
+                return true;
+            }
+            else
+            {
+                return false;
             }
         }
 

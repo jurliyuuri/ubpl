@@ -1,7 +1,6 @@
 ﻿using System;
 using System.IO;
 using UbplCommon;
-using UbplCommon.Translator;
 
 namespace Ubpldir
 {
@@ -15,29 +14,27 @@ namespace Ubpldir
                 Environment.Exit(1);
             }
 
-            using (var stream = File.Open(args[0], FileMode.Open))
+            using var stream = File.OpenRead(args[0]);
+            Span<byte> binary = stackalloc byte[16];
+
+            int index = 0;
+            while (stream.Read(binary) > 0)
             {
-                var binary = new byte[16];
+                uint[] values = ToUint(binary);
+                Mnemonic mnemonic = (Mnemonic)values[0];
+                ModRm modRm = new ModRm(values[1]);
+                string head = ToOperandString(modRm.HeadMode, modRm.HeadReg1, modRm.HeadReg2, values[2]);
+                string tail = ToOperandString(modRm.TailMode, modRm.TailReg1, modRm.TailReg2, values[3]);
 
-                int index = 0;
-                while (stream.Read(binary, 0, binary.Length) > 0)
-                {
-                    uint[] values = ToUint(binary);
-                    Mnemonic mnemonic = (Mnemonic)values[0];
-                    ModRm modRm = new ModRm(values[1]);
-                    string head = ToOperandString(modRm.HeadMode, modRm.HeadReg1, modRm.HeadReg2, values[2]);
-                    string tail = ToOperandString(modRm.TailMode, modRm.TailReg1, modRm.TailReg2, values[3]);
+                Console.Write("{0:X08}: ", index);
+                Console.Write("{0:X08} {1:X08} {2:X08} {3:X08} | ", values[0], values[1], values[2], values[3]);
+                Console.WriteLine("{0,-6} {1} {2}", mnemonic, head, tail);
 
-                    Console.Write("{0:X08}: ", index);
-                    Console.Write("{0:X08} {1:X08} {2:X08} {3:X08} | ", values[0], values[1], values[2], values[3]);
-                    Console.WriteLine("{0,-6} {1} {2}", mnemonic, head, tail);
-
-                    index += 16;
-                }
+                index += 16;
             }
         }
 
-        static uint[] ToUint(byte[] binary)
+        static uint[] ToUint(ReadOnlySpan<byte> binary)
         {
             uint[] values = new uint[4];
 

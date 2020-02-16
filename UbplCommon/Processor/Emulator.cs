@@ -133,17 +133,26 @@ namespace UbplCommon.Processor
         /// <param name="binary">ubplバイナリデータ</param>
         public void Read(byte[] binary)
         {
-            if ((_initialProgramAddress + binary.LongLength) >= uint.MaxValue)
-            {
-                throw new ApplicationException("Too Large Programme");
-            }
+            CheckBinary(binary.LongLength);
 
-            uint u = _initialProgramAddress;
+            uint nowAddress = _initialProgramAddress;
             for (int i = 0; i < binary.Length; i += 4)
             {
-                _memory[u] = (uint)((binary[i] << 24) | (binary[i + 1] << 16) | (binary[i + 2] << 8) | binary[i + 3]);
-                u += 4;
+                _memory[nowAddress] = (uint)((binary[i] << 24) | (binary[i + 1] << 16) | (binary[i + 2] << 8) | binary[i + 3]);
+                nowAddress += 4;
             }
+        }
+
+        /// <summary>
+        /// バイナリコードを読み込みます．
+        /// </summary>
+        /// <param name="binary">ubplバイナリデータ</param>
+        public void Read(ReadOnlySpan<byte> binary)
+        {
+            CheckBinary(binary.Length);
+
+            uint nowAddress = _initialProgramAddress;
+            WriteMemory(binary, ref nowAddress);
         }
 
         /// <summary>
@@ -152,9 +161,48 @@ namespace UbplCommon.Processor
         /// <param name="filepath">2003fバイナリデータを保持するファイルのパス</param>
         public void Read(string filepath)
         {
-            Read(File.ReadAllBytes(filepath));
+            const int BUFFER_SIZE = 128;
+            Span<byte> buffer = stackalloc byte[BUFFER_SIZE];
+
+            using var file = File.OpenRead(filepath);
+            long length = file.Length;
+            uint nowAddress = _initialProgramAddress;
+
+            CheckBinary(length);
+
+            while (length > 0)
+            {
+                int readSize = file.Read(buffer);
+                WriteMemory(buffer, ref nowAddress);
+
+                length -= readSize;
+            }
         }
 
+        private void CheckBinary(long length)
+        {
+            if ((_initialProgramAddress + length) >= uint.MaxValue)
+            {
+                throw new ApplicationException("Too Large Programme");
+            }
+            else if ((length & 0x3) != 0)
+            {
+                throw new ApplicationException("Illegal binary: ubpl binary must be allocated in units of 4 bytes.");
+            }
+        }
+
+        private void WriteMemory(ReadOnlySpan<byte> buffer, ref uint address)
+        {
+            for (int i = 0; i < buffer.Length; i += 4)
+            {
+                _memory[address] = (uint)((buffer[i] << 24) | (buffer[i + 1] << 16) | (buffer[i + 2] << 8) | (buffer[i + 3]));
+                address += 4U;
+            }
+        }
+
+        /// <summary>
+        /// 読み込んだバイナリを実行します．
+        /// </summary>
         public void Run()
         {
             try

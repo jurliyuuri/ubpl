@@ -134,26 +134,30 @@ namespace UbplCommon.Processor
                 _data[readAddress] = (uint)_random.Next(int.MinValue, int.MaxValue);
             }
 
+            uint readValue = _data[readAddress];
+
             switch (pos)
             {
                 case 0:
-                    _data[readAddress] &= 0x00FFFFFFU;
-                    _data[readAddress] |= (value & 0xFFU) << 24;
+                    readValue &= 0x00FFFFFFU;
+                    readValue |= (value & 0xFFU) << 24;
                     break;
                 case 1:
-                    _data[readAddress] &= 0xFF00FFFFU;
-                    _data[readAddress] |= (value & 0xFFU) << 16;
+                    readValue &= 0xFF00FFFFU;
+                    readValue |= (value & 0xFFU) << 16;
                     break;
                 case 2:
-                    _data[readAddress] &= 0xFFFF00FFU;
-                    _data[readAddress] |= (value & 0xFFU) << 8;
+                    readValue &= 0xFFFF00FFU;
+                    readValue |= (value & 0xFFU) << 8;
                     break;
                 case 3:
                 default:
-                    _data[readAddress] &= 0xFFFFFF00U;
-                    _data[readAddress] |= value & 0xFFU;
+                    readValue &= 0xFFFFFF00U;
+                    readValue |= value & 0xFFU;
                     break;
             }
+
+            _data[readAddress] = readValue;
         }
 
         public void SetValue16(uint address, uint value)
@@ -166,20 +170,24 @@ namespace UbplCommon.Processor
                 _data[readAddress] = (uint)_random.Next(int.MinValue, int.MaxValue);
             }
 
+            uint readValue = _data[readAddress];
+
             switch (pos)
             {
                 case 0:
                 case 1:
-                    _data[readAddress] &= 0x0000FFFFU;
-                    _data[readAddress] |= (value & 0xFFFFU) << 16;
+                    readValue &= 0x0000FFFFU;
+                    readValue |= (value & 0xFFFFU) << 16;
                     break;
                 case 2:
                 case 3:
                 default:
-                    _data[readAddress] &= 0xFFFF0000U;
-                    _data[readAddress] |= value & 0xFFFFU;
+                    readValue &= 0xFFFF0000U;
+                    readValue |= value & 0xFFFFU;
                     break;
             }
+
+            _data[readAddress] = readValue;
         }
 
         public void SetValue32(uint address, uint value)

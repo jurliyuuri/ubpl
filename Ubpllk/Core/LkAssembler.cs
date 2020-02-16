@@ -84,46 +84,6 @@ namespace Ubpllk.Core
             Write(outFile);
         }
 
-
-        #region 共通
-        private Operand ToRegisterOperand(Register register)
-        {
-            Operand operand;
-            switch (register)
-            {
-                case Register.F0:
-                    operand = F0;
-                    break;
-                case Register.F1:
-                    operand = F1;
-                    break;
-                case Register.F2:
-                    operand = F2;
-                    break;
-                case Register.F3:
-                    operand = F3;
-                    break;
-                case Register.F4:
-                    operand = F4;
-                    break;
-                case Register.F5:
-                    operand = F5;
-                    break;
-                case Register.F6:
-                    operand = F6;
-                    break;
-                case Register.XX:
-                    operand = XX;
-                    break;
-                default:
-                    throw new NotSupportedException($"Not Supported register: {register}");
-            }
-
-            return operand;
-        }
-
-        #endregion
-
         #region 字句解析
 
         private IList<string> Read(string inFile)
@@ -315,7 +275,7 @@ namespace Ubpllk.Core
                         {
                             codeList.Add(new LkCode
                             {
-                                Mnemonic = (LkMnemonic)Enum.Parse(typeof(LkMnemonic), str, true),
+                                Mnemonic = Enum.Parse<LkMnemonic>(str, true),
                                 Head = opd,
                                 Tail = ZERO,
                             });
@@ -359,7 +319,7 @@ namespace Ubpllk.Core
 
                         codeList.Add(new LkCode
                         {
-                            Mnemonic = (LkMnemonic)Enum.Parse(typeof(LkMnemonic), str, true),
+                            Mnemonic = Enum.Parse<LkMnemonic>(str, true),
                             Head = Convert(head, fileCount),
                             Tail = Convert(tail, fileCount),
                         });
@@ -367,7 +327,7 @@ namespace Ubpllk.Core
                     case "fi":
                         head = wordList[++i];
                         tail = wordList[++i];
-                        if (Enum.TryParse(wordList[++i].ToUpper(), out LkMnemonic mne))
+                        if (Enum.TryParse(wordList[++i], true, out LkMnemonic mne))
                         {
                             codeList.Add(new LkCode
                             {
@@ -389,25 +349,20 @@ namespace Ubpllk.Core
             return codeList;
         }
 
+        private static readonly char[] OPERAND_OP = { '+', '-' };
         private Operand Convert(string str, int fileCount)
         {
+            ReadOnlySpan<char> op = OPERAND_OP.AsSpan();
             bool seti = str.Last() == '@';
             Operand? result = null;
             Operand operand;
-
-            if (seti)
-            {
-                str = str.Remove(str.Length - 1);
-            }
-
-            char[] op = { '+', '|' };
-            int index = 0;
-            int nextIndex = str.IndexOfAny(op, index);
+            ReadOnlySpan<char> span = str.AsSpan(0, seti ? str.Length - 1 : str.Length);
+            int nextIndex = span.IndexOfAny(op);
             char key = '\0';
 
             while (nextIndex != -1)
             {
-                operand = ToOperand(str[index..nextIndex], fileCount);
+                operand = GetOperand(span.Slice(0, nextIndex), fileCount);
 
                 if (key == '|')
                 {
@@ -423,12 +378,12 @@ namespace Ubpllk.Core
                     result += operand;
                 }
 
-                key = str[nextIndex];
-                index = nextIndex + 1;
-                nextIndex = str.IndexOfAny(op, index);
+                key = span[nextIndex];
+                span = span.Slice(nextIndex + 1);
+                nextIndex = span.IndexOfAny(op);
             };
 
-            operand = ToOperand(str[index..], fileCount);
+            operand = GetOperand(span, fileCount);
 
             if (key == '|')
             {
@@ -454,19 +409,55 @@ namespace Ubpllk.Core
             }
         }
 
-        Operand ToOperand(string str, int fileCount)
+        Operand GetOperand(ReadOnlySpan<char> span, int fileCount)
         {
-            if (uint.TryParse(str, out uint val))
-            {
+            if (uint.TryParse(span, out uint val)) {
                 return ToOperand(val);
             }
-            else if (Enum.TryParse(str.ToUpper(), out Register reg))
+            else if (TryGetRegisterOperand(span, out Operand operand))
             {
-                return ToRegisterOperand(reg);
+                return operand;
             }
             else
             {
+                string str = span.ToString();
                 return GetLabel(str, fileCount);
+            }
+        }
+
+        private bool TryGetRegisterOperand(ReadOnlySpan<char> span, out Operand register)
+        {
+            register = null!;
+
+            if (span.Length != 2)
+            {
+                return false;
+            }
+
+            if (span[0] == 'x' && span[1] == 'x')
+            {
+                register = Operand.XX;
+                return true;
+            }
+            else if (span[0] == 'f')
+            {
+                register = span[1] switch
+                {
+                    '0' => Operand.F0,
+                    '1' => Operand.F1,
+                    '2' => Operand.F2,
+                    '3' => Operand.F3,
+                    '4' => Operand.F4,
+                    '5' => Operand.F5,
+                    '6' => Operand.F6,
+                    _ => null!,
+                };
+
+                return true;
+            }
+            else
+            {
+                return false;
             }
         }
 
