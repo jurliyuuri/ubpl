@@ -444,8 +444,8 @@ namespace UbplCommon.Processor
             {
                 return size switch
                 {
-                    ValueSize.BYTE => result & 0xFFU,
-                    ValueSize.WORD => result & 0xFFFFU,
+                    ValueSize.BYTE => (result >> 24) | ((~(result >> 31) + 1) << 8),
+                    ValueSize.WORD => (result >> 16) | ((~(result >> 31) + 1) << 16),
                     ValueSize.DWORD => result,
                     _ => throw new Exception($"invalid value size : {size}"),
                 };

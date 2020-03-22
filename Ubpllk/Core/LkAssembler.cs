@@ -421,6 +421,8 @@ namespace Ubpllk.Core
             else
             {
                 string str = span.ToString();
+                if (str.All(char.IsDigit)) { throw new ApplicationException($"Invalid constant value: {str}"); }
+
                 return GetLabel(str, fileCount);
             }
         }
