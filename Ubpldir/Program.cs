@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Buffers;
 using System.IO;
+using System.Text;
 using UbplCommon;
 
 namespace Ubpldir
@@ -16,11 +18,12 @@ namespace Ubpldir
 
             using var stream = File.OpenRead(args[0]);
             Span<byte> binary = stackalloc byte[16];
+            Span<uint> values = stackalloc uint[4];
 
             int index = 0;
             while (stream.Read(binary) > 0)
             {
-                uint[] values = ToUint(binary);
+                ToUint(binary, values);
                 Mnemonic mnemonic = (Mnemonic)values[0];
                 ModRm modRm = new ModRm(values[1]);
                 string head = ToOperandString(modRm.HeadMode, modRm.HeadReg1, modRm.HeadReg2, values[2]);
@@ -31,64 +34,82 @@ namespace Ubpldir
                 Console.WriteLine("{0,-6} {1} {2}", mnemonic, head, tail);
 
                 index += 16;
+                binary.Fill(0);
             }
         }
 
-        static uint[] ToUint(ReadOnlySpan<byte> binary)
+        static void ToUint(ReadOnlySpan<byte> binary, Span<uint> values)
         {
-            uint[] values = new uint[4];
+            values.Fill(0);
 
             for (int i = 0; i < values.Length; i++)
             {
                 for (int j = 0; j < 4; j++)
                 {
-                    values[i] |= (uint)binary[i * 4 + j] << ((3 - j) * 8);
+                    values[i] |= (uint)binary[(i << 2) + j] << ((3 - j) << 3);
                 }
             }
-
-            return values;
         }
 
         static string ToOperandString(OperandMode operandMode, Register reg1, Register reg2, uint value)
         {
-            string str = "";
+            StringBuilder builder = new StringBuilder(24);
 
             switch ((operandMode & ~OperandMode.ADDRESS))
             {
                 case OperandMode.REG:
-                    str = reg1.ToString();
+                    builder.Append(ToString(reg1));
                     break;
                 case OperandMode.IMM:
-                    str = value.ToString();
+                    builder.Append(value);
                     break;
                 case OperandMode.IMM_REG:
-                    str = value + "+" + reg1;
+                    builder.Append(value).Append("+").Append(ToString(reg1));
                     break;
                 case OperandMode.IMM_NREG:
-                    str = value + "|" + reg1;
+                    builder.Append(value).Append("|").Append(ToString(reg1));
                     break;
                 case OperandMode.IMM_REG_REG:
-                    str = value + "+" + reg1 + "+" + reg2;
+                    builder.Append(value).Append("+").Append(ToString(reg1))
+                        .Append("+").Append(ToString(reg2));
                     break;
                 case OperandMode.IMM_REG_NREG:
-                    str = value + "+" + reg1 + "|" + reg2;
+                    builder.Append(value).Append("+").Append(ToString(reg1))
+                        .Append("|").Append(ToString(reg2));
                     break;
                 case OperandMode.IMM_NREG_REG:
-                    str = value + "|" + reg1 + "+" + reg2;
+                    builder.Append(value).Append("|").Append(ToString(reg1))
+                        .Append("+").Append(ToString(reg2));
                     break;
                 case OperandMode.IMM_NREG_NREG:
-                    str = value + "|" + reg1 + "|" + reg2;
+                    builder.Append(value).Append("|").Append(ToString(reg1))
+                        .Append("|").Append(ToString(reg2));
                     break;
                 default:
-                    break;
+                    throw new ArgumentOutOfRangeException($"Invalid value: {operandMode}");
             }
 
             if (operandMode.HasFlag(OperandMode.ADDRESS))
             {
-                str += "@";
+                builder.Append("@");
             }
 
-            return str;
+            return builder.ToString();
+
+            static string ToString(Register register)
+            {
+                return register switch {
+                    Register.F0 => "F0",
+                    Register.F1 => "F1",
+                    Register.F2 => "F2",
+                    Register.F3 => "F3",
+                    Register.F4 => "F4",
+                    Register.F5 => "F5",
+                    Register.F6 => "F6",
+                    Register.XX => "XX",
+                    _ => throw new ArgumentOutOfRangeException($"Invalid value: {register}"),
+                };
+            }
         }
     }
 }

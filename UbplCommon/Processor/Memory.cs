@@ -9,7 +9,7 @@ namespace UbplCommon.Processor
         /// <summary>
         /// メモリ内容
         /// </summary>
-        private readonly IDictionary<uint, uint> _data;
+        private readonly Dictionary<uint, uint> _data;
 
         /// <summary>
         /// メモリが未初期化だった場合に設定されている値を作成するRandom

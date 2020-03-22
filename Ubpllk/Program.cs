@@ -17,7 +17,7 @@ namespace Ubpllk
 
             string output = "a.out";
             bool isDebug = false;
-            List<string> input = new List<string>();
+            List<string> input = new List<string>(args.Length);
 
             for (int i = 0; i < args.Length; i++)
             {

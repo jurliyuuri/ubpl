@@ -23,7 +23,7 @@ namespace UbplCommon.Processor
         /// <summary>
         /// 汎用レジスタ
         /// </summary>
-        readonly IDictionary<Register, uint> _registers;
+        readonly RegisterTable _registers;
 
         /// <summary>
         /// デバッグ用出力バッファ
@@ -103,16 +103,16 @@ namespace UbplCommon.Processor
 
             Random random = new Random();
 
-            _registers = new Dictionary<Register, uint>
+            _registers = new RegisterTable
             {
-                [Register.F0] = (uint)random.Next(int.MinValue, int.MaxValue),
-                [Register.F1] = (uint)random.Next(int.MinValue, int.MaxValue),
-                [Register.F2] = (uint)random.Next(int.MinValue, int.MaxValue),
-                [Register.F3] = (uint)random.Next(int.MinValue, int.MaxValue),
-                [Register.F4] = (uint)random.Next(int.MinValue, int.MaxValue),
-                [Register.F5] = _initialStackAddress,
-                [Register.F6] = (uint)random.Next(int.MinValue, int.MaxValue),
-                [Register.XX] = _initialProgramAddress,
+                F0 = (uint)random.Next(int.MinValue, int.MaxValue),
+                F1 = (uint)random.Next(int.MinValue, int.MaxValue),
+                F2 = (uint)random.Next(int.MinValue, int.MaxValue),
+                F3 = (uint)random.Next(int.MinValue, int.MaxValue),
+                F4 = (uint)random.Next(int.MinValue, int.MaxValue),
+                F5 = _initialStackAddress,
+                F6 = (uint)random.Next(int.MinValue, int.MaxValue),
+                XX = _initialProgramAddress,
             };
 
             _memory[_initialStackAddress] = _returnAddress;

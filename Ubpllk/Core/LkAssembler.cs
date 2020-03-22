@@ -28,9 +28,9 @@ namespace Ubpllk.Core
 
         #endregion
 
-        readonly IList<string> _inFiles;
-        readonly IDictionary<string, bool> _kuexok;
-        readonly IDictionary<string, JumpLabel> _labels;
+        readonly List<string> _inFiles;
+        readonly Dictionary<string, bool> _kuexok;
+        readonly Dictionary<string, JumpLabel> _labels;
 
         public LkAssembler(List<string> inFiles) : base()
         {
@@ -92,7 +92,7 @@ namespace Ubpllk.Core
 
             using (var reader = new StreamReader(inFile, new UTF8Encoding(false)))
             {
-                StringBuilder buffer = new StringBuilder();
+                StringBuilder buffer = new StringBuilder(16);
 
                 while (!reader.EndOfStream)
                 {

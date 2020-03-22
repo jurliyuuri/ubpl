@@ -6,7 +6,7 @@ namespace UbplCommon
 {
     public static class CharacterCode
     {
-        private readonly static IDictionary<char, uint> _code;
+        private readonly static Dictionary<char, uint> _code;
 
         public static uint ToByte(char c)
         {

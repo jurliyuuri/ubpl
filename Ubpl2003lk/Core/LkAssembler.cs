@@ -36,10 +36,10 @@ namespace Ubpl2003lk.Core
 
         #endregion
 
-        private readonly IList<string> _inFiles;
-        private readonly IDictionary<string, bool> _kuexok;
-        private readonly IDictionary<string, JumpLabel> _labels;
-        private readonly IList<LkCode> _labelLifemList;
+        private readonly List<string> _inFiles;
+        private readonly Dictionary<string, bool> _kuexok;
+        private readonly Dictionary<string, JumpLabel> _labels;
+        private readonly List<LkCode> _labelLifemList;
 
         public LkAssembler(List<string> inFiles) : base()
         {

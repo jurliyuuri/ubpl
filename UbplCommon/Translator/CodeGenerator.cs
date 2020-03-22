@@ -9,9 +9,9 @@ namespace UbplCommon.Translator
 {
     public abstract class CodeGenerator
     {
-        private readonly IList<Code> _codes;
+        private readonly LinkedList<Code> _codes;
         private readonly IList<JumpLabel> _labels;
-        private readonly IList<LifemValue> _lifemValues;
+        private readonly LinkedList<LifemValue> _lifemValues;
 
         protected static readonly Operand F0 = Operand.F0;
         protected static readonly Operand F1 = Operand.F1;
@@ -36,9 +36,9 @@ namespace UbplCommon.Translator
 
         protected CodeGenerator()
         {
-            _codes = new List<Code>();
+            _codes = new LinkedList<Code>();
             _labels = new List<JumpLabel>();
-            _lifemValues = new List<LifemValue>();
+            _lifemValues = new LinkedList<LifemValue>();
         }
 
         protected Operand Seti(Operand opd)
@@ -72,14 +72,19 @@ namespace UbplCommon.Translator
         /// <returns>変換結果</returns>
         public IReadOnlyList<byte> ToBinaryCode()
         {
-            List<byte> binaryCode = new List<byte>();
-            List<byte> lifemBinary = new List<byte>();
+            int lifemBinarySize = _lifemValues.Count << 2;
+            int binarySize = (_codes.Count << 4) + lifemBinarySize - (lifemBinarySize & 0xF) + 16;
+
+            List<byte> binaryCode = new List<byte>(binarySize);
+            List<byte> lifemBinary = new List<byte>(lifemBinarySize);
             uint count = (uint)_codes.Count * 16U;
+
+            Span<byte> buffer = stackalloc byte[4];
 
             // lifemのラベル処理，バイナリ化
             foreach (var lifemValue in _lifemValues)
             {
-                byte[] binary = ToBinary(lifemValue.Value);
+                ToBinary(lifemValue.Value, buffer);
 
                 if (lifemValue.Size == ValueSize.DWORD && (count & 0x3) != 0)
                 {
@@ -110,16 +115,19 @@ namespace UbplCommon.Translator
                 switch (lifemValue.Size)
                 {
                     case ValueSize.BYTE:
-                        lifemBinary.Add(binary[3]);
+                        lifemBinary.Add(buffer[3]);
                         count += 1;
                         break;
                     case ValueSize.WORD:
-                        lifemBinary.Add(binary[2]);
-                        lifemBinary.Add(binary[3]);
+                        lifemBinary.Add(buffer[2]);
+                        lifemBinary.Add(buffer[3]);
                         count += 2;
                         break;
                     case ValueSize.DWORD:
-                        lifemBinary.AddRange(binary);
+                        lifemBinary.Add(buffer[0]);
+                        lifemBinary.Add(buffer[1]);
+                        lifemBinary.Add(buffer[2]);
+                        lifemBinary.Add(buffer[3]);
                         count += 4;
                         break;
                     default:
@@ -133,8 +141,12 @@ namespace UbplCommon.Translator
             {
                 ModRm modrm = code.Modrm;
                 uint value;
-                
-                binaryCode.AddRange(ToBinary((uint)code.Mnemonic));
+
+                ToBinary((uint)code.Mnemonic, buffer);
+                binaryCode.Add(buffer[0]);
+                binaryCode.Add(buffer[1]);
+                binaryCode.Add(buffer[2]);
+                binaryCode.Add(buffer[3]);
                 
                 if (code.Head.HasLabel)
                 {
@@ -165,9 +177,12 @@ namespace UbplCommon.Translator
                             break;
                     }
                 }
+                ToBinary(code.Modrm.Value, buffer);
+                binaryCode.Add(buffer[0]);
+                binaryCode.Add(buffer[1]);
+                binaryCode.Add(buffer[2]);
+                binaryCode.Add(buffer[3]);
 
-                binaryCode.AddRange(ToBinary(code.Modrm.Value));
-                
                 if ((modrm.HeadMode & (~OperandMode.ADDRESS)) == OperandMode.REG)
                 {
                     value = 0U;
@@ -188,8 +203,11 @@ namespace UbplCommon.Translator
                         value -= count;
                     }
                 }
-
-                binaryCode.AddRange(ToBinary(value));
+                ToBinary(value, buffer);
+                binaryCode.Add(buffer[0]);
+                binaryCode.Add(buffer[1]);
+                binaryCode.Add(buffer[2]);
+                binaryCode.Add(buffer[3]);
 
                 if ((modrm.TailMode & (~OperandMode.ADDRESS)) == OperandMode.REG)
                 {
@@ -211,7 +229,11 @@ namespace UbplCommon.Translator
                         value -= count;
                     }
                 }
-                binaryCode.AddRange(ToBinary(value));
+                ToBinary(value, buffer);
+                binaryCode.Add(buffer[0]);
+                binaryCode.Add(buffer[1]);
+                binaryCode.Add(buffer[2]);
+                binaryCode.Add(buffer[3]);
 
                 count += 16;
             }
@@ -226,16 +248,13 @@ namespace UbplCommon.Translator
 
             return new ReadOnlyCollection<byte>(binaryCode);
 
-            static byte[] ToBinary(uint value)
+            static void ToBinary(uint value, Span<byte> buffer)
             {
-                var buffer = new byte[4];
 
                 buffer[0] = (byte)(value >> 24);
                 buffer[1] = (byte)(value >> 16);
                 buffer[2] = (byte)(value >> 8);
                 buffer[3] = (byte)value;
-
-                return buffer;
             }
         }
 
@@ -245,7 +264,7 @@ namespace UbplCommon.Translator
         {
             ModRm modrm = CreateModRm(head, tail);
 
-            _codes.Add(new Code
+            _codes.AddLast(new Code
             {
                 Mnemonic = mne,
                 Modrm = modrm,
@@ -344,7 +363,7 @@ namespace UbplCommon.Translator
                 }
             } 
 
-            _lifemValues.Add(lifemValue);
+            _lifemValues.AddLast(lifemValue);
         }
 
         /// <summary>
